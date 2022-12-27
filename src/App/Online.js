@@ -22,17 +22,21 @@ require.onError = function (err) {
 	});
 };
 
-require( {
-	urlArgs: ROConfig.version,
-	baseUrl: './src/',
-	paths: {
-		text:   'Vendors/text.require',
-		jquery: 'Vendors/jquery-1.9.1'
-	}
-},
-	['Engine/GameEngine', 'Core/Context', 'Plugins/PluginManager'],
-	function(GameEngine,        Context,           Plugins) {
-		'use strict';
+require({
+    urlArgs: 'bust=' + ROConfig.version,
+    baseUrl: './src/',
+    paths: {
+        text:   'Vendors/text.require',
+		jquery: 'Vendors/jquery-3.4.1',
+		jqueryui: 'Vendors/jquery-ui.min',
+		jqueryuitopdrop: 'Vendors/jquery.top-droppable'
+    },
+}, ['Engine/GameEngine', 'Core/Context', 'Plugins/PluginManager'], function (
+    GameEngine,
+    Context,
+    Plugins
+) {
+    'use strict';
 
 		Plugins.init();
 		GameEngine.init();
