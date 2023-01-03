@@ -8,7 +8,7 @@
  * @author Vincent Thibault
  */
 
-define( ['jquery', 'DB/DBManager', 'jqueryui', 'jqueryuitopdrop'], function( jQuery, DB, jQueryUI, topDrop  )
+define( ['jquery', 'DB/DBManager', 'jqueryui', 'jquerytouch', 'jqueryuitopdrop'], function( jQuery, DB, jQueryUI, jQueryUITouch, topDrop  )
 {
 	'use strict';
 
