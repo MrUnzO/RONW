@@ -50,6 +50,7 @@ define(function( require )
 	var MiniMap           = require('UI/Components/MiniMap/MiniMap');
 	var ShortCut          = require('UI/Components/ShortCut/ShortCut');
 	var StatusIcons       = require('UI/Components/StatusIcons/StatusIcons');
+	var PetMessageConst   = require('DB/Pets/PetMessageConst');
 
 	// Excludes for skill name display
 	var SkillNameDisplayExclude = [
@@ -106,16 +107,16 @@ define(function( require )
 			entity = new Entity();
 			entity.set(pkt);
 			if(pkt.job == 45){
-				if(MapEffects.get(pkt.GID) == null){
-					var mapEffect = {
-						'name': pkt.GID,
-						'pos': [pkt.PosDir[0], pkt.PosDir[1], Altitude.getCellHeight(pkt.PosDir[0], pkt.PosDir[1])],
-						'id': 321,
-						'delay': 800,
-						'param': [0, 0, 0, 0],
-						'tick': 0
-					};
-					MapEffects.add(mapEffect);
+				var EF_Init_Par = {
+					position: entity.position
+				};
+				
+				if(PACKETVER.value < 20030715){
+					EF_Init_Par.effectId = EffectConst.EF_WARPZONE;
+					EffectManager.spam( EF_Init_Par );
+				} else {
+					EF_Init_Par.effectId = EffectConst.EF_WARPZONE2;
+					EffectManager.spam( EF_Init_Par );
 				}
 			}
 			EntityManager.add(entity);
@@ -157,10 +158,6 @@ define(function( require )
 		var entity = EntityManager.get(pkt.GID);
 		if (entity) {
 			
-			if(entity._job == 45){
-				MapEffects.remove(pkt.GID);
-			}
-			
 			if (entity.objecttype === Entity.TYPE_PC && pkt.GID === Session.Entity.GID) {  //death animation only for myself
 				var EF_Init_Par = {
 					effectId: EffectConst.EF_DEVIL,
@@ -178,7 +175,9 @@ define(function( require )
 			EffectManager.remove( null, pkt.GID,[ EffectConst.EF_CHOOKGI_FIRE, EffectConst.EF_CHOOKGI_WIND, EffectConst.EF_CHOOKGI_WATER, EffectConst.EF_CHOOKGI_GROUND, 'temporary_warlock_sphere' ]); // Elemental spheres (Warlock)
 			
 			switch(pkt.type){
-				//case Entity.VT.OUTOFSIGHT: break;
+				case Entity.VT.OUTOFSIGHT: 
+					EffectManager.remove( null, pkt.GID, null);
+					break;
 				//case Entity.VT.DEAD: break;
 				
 				case Entity.VT.EXIT: 
@@ -573,6 +572,20 @@ define(function( require )
 							next:  false
 						}
 					});
+				}
+				
+				// Talk sometime
+				if(srcEntity.GID === Session.Entity.GID && (Session.pet.friendly > 900 && (Session.pet.lastTalk || 0) + 10000 < Date.now())){
+					const talkRate = parseInt((Math.random() * 10));
+					if(talkRate < 3){
+						const hunger = DB.getPetHungryState(Session.pet.oldHungry);
+						const talk = DB.getPetTalkNumber(Session.pet.job, PetMessageConst.PM_HUNTING, hunger);
+
+						var pkt    = new PACKET.CZ.PET_ACT();
+						pkt.data = talk;
+						Network.sendPacket(pkt);
+						Session.pet.lastTalk = Date.now();
+					}
 				}
 				
 				break;
@@ -1037,6 +1050,21 @@ define(function( require )
 				} else {
 					srcEntity.setAction(SkillActionTable['DEFAULT'](srcEntity, Renderer.tick));
 				}
+				
+				//Pet Talk
+				if(srcEntity.GID === Session.Entity.GID && (Session.pet.friendly > 900 && (Session.pet.lastTalk || 0) + 10000 < Date.now())){
+					const talkRate = parseInt((Math.random() * 10));
+					if(talkRate < 3){
+						const hunger = DB.getPetHungryState(Session.pet.oldHungry);
+						const talk = DB.getPetTalkNumber(Session.pet.job, PetMessageConst.PM_HUNTING, hunger);
+
+						var pkt    = new PACKET.CZ.PET_ACT();
+						pkt.data = talk;
+						Network.sendPacket(pkt);
+						Session.pet.lastTalk = Date.now();
+					}
+				}
+				
 			}
 		}
 
