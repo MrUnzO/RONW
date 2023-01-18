@@ -141,7 +141,7 @@ function createHTML(){
                                 },
                             ],
                             skipServerList:  true,
-                            skipIntro:       false,
+                            skipIntro:       true,
                             plugins: {},
                         };
             
