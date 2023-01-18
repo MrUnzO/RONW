@@ -77,21 +77,20 @@ requirejs(
                     FileManager.onGameFileLoaded = function (filename) {
                         sendLog('Success to load GRF file "' + filename + '"');
                     };
-                    
+
                     FileManager.onGameFileError = function (filename, error) {
                         sendError(
                             'Error loading GRF file "' +
-                            filename +
-                            '" : ' +
-                            error
-                            );
-                        };
-                        
-                        // Start loading GRFs files
-                        FileSystem.bind('onready', function () {
-                            FileManager.clean();
-                            FileManager.init(msg.data.grfList, msg.data.dataPath);
+                                filename +
+                                '" : ' +
+                                error
+                        );
+                    };
 
+                    // Start loading GRFs files
+                    FileSystem.bind('onready', function () {
+                        FileManager.clean();
+                        FileManager.init(msg.data.grfList,  msg.data.dataPath ?  msg.data.dataPath:null );
 
                         postMessage({
                             uid: msg.uid,

@@ -8,9 +8,10 @@
  * @author Vincent Thibault
  */
 
+
 define(function (require) {
     'use strict';
-
+	console.dir(self);
     // Load dependencies
     var GameFile = require('Loaders/GameFile');
     var World = require('Loaders/World');
@@ -21,7 +22,12 @@ define(function (require) {
     var Action = require('Loaders/Action');
     var Str = require('Loaders/Str');
     var FileSystem = require('Core/FileSystem');
-    var fs = self.require && self.require('fs');
+	if(self.__nw_require){
+		var fs = self.require && self.require('fs');
+	}else{
+		var fs = self.requireNode && self.requireNode('fs');
+
+	}
 
     /**
      * FileManager namespace
@@ -60,7 +66,7 @@ define(function (require) {
             sortBySize = true;
         var list = [];
         this.dataPath = dataPath ? dataPath : false;
-
+		
         // load GRFs from a file (DATA.INI)
         if (typeof grfList === 'string') {
             if (fs) {
@@ -102,7 +108,7 @@ define(function (require) {
                     list[i] = {
                         name: list[i],
                         size: fs.statSync(list[i]).size,
-                        fd: fs.openSync(list[i], 'r'),
+                        fd: fs.openSync(list[i], 'r')
                     };
                     continue;
                 }
@@ -207,14 +213,26 @@ define(function (require) {
         // Trim the path
         filename = filename.replace(/^\s+|\s+$/g, '');
 
-        // Search on data path first
-        if (fs && fs.existsSync(this.dataPath + filename) && this.dataPath && !filename.match(/bgm/i)) {
-            // callback(fs.readFileSync(this.dataPath + filename));
-            fs.readFile(this.dataPath + filename, function (err, nb) {
-                var ab = nb.buffer;
-                callback(new Uint8Array(ab).buffer);
-              });
-            return;
+        if (this.dataPath) {
+            // Search on data path first
+            if (
+                fs &&
+                fs.existsSync(this.dataPath + filename) &&
+                this.dataPath &&
+                !filename.match(/bgm/i)
+            ) {
+                // callback(fs.readFileSync(this.dataPath + filename));
+                fs.readFile(this.dataPath + filename, function (err, nb) {
+                    var ab = nb.buffer;
+                    callback(new Uint8Array(ab).buffer);
+                });
+                return;
+            }
+        } else {
+            if (fs && fs.existsSync(filename)) {
+                callback(fs.readFileSync(filename));
+                return;
+            }
         }
 
         // Search in filesystem
