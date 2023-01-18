@@ -7,17 +7,15 @@ const args = getArgs();
 
 const buildDate = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
 const dist = './dist/';
-const platform = "NW";
+const platform = "Web";
 (function build() {
     
     //delete all files in dist
     fs.rmSync(dist + platform +'/AI', { recursive: true, force: true });
     fs.rmSync(dist + platform +'/static', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/main.html', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/main.js', { recursive: true, force: true });
+    fs.rmSync(dist + platform +'/index.html', { recursive: true, force: true });
     fs.rmSync(dist + platform +'/Online.js', { recursive: true, force: true });
     fs.rmSync(dist + platform +'/ThreadEventHandler.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/package.json', { recursive: true, force: true });
 
     if (!fs.existsSync(dist)){
         fs.mkdirSync(dist);
@@ -40,14 +38,6 @@ const platform = "NW";
     
     if ((args && args['A']) || args['all'] || Object.keys(args).length === 0) {
         copyFolder('./AI', dist + platform + '/AI');
-    }
-    
-    if ((args && args['M']) || args['all'] || Object.keys(args).length === 0) {
-        createMain();
-    }
-    
-    if ((args && args['J']) || args['all'] || Object.keys(args).length === 0) {
-        createJSON();
     }
 
     copyFolder('./static', dist + platform + '/static');
@@ -129,75 +119,49 @@ function createHTML(){
         <!DOCTYPE html>
         <html>
             <head>
-                <title>RONW [${package.version} - ${buildDate}]</title>
+                <title>RONW - Browser [${package.version} - ${buildDate}]</title>
             </head>
             <body>
-                <script src="main.js"></script>
+                <script>
+                    window.addEventListener("load", (event) => {
+                        window.ROConfig = {
+                            development: true, // don't need to compile javascript files in chrome app since it's already a package.
+                            remoteClient:  "http://roclient.localhost/",
+                            servers: [
+                                {
+                                    display: 'Localhost Server',
+                                    desc: "roBrowser's demo server",
+                                    address: '127.0.0.1',
+                                    port: 6900,
+                                    version: 55,
+                                    langtype: 5,
+                                    packetver: 20180704,
+                                    socketProxy: "ws://127.0.0.1:5999/",
+                                    packetKeys: true
+                                },
+                            ],
+                            skipServerList:  true,
+                            skipIntro:       false,
+                            plugins: {},
+                        };
+            
+                        script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.src = 'Online.js';
+                        document.getElementsByTagName('body')[0].appendChild(script);
+                    });
+                </script>
             </body>
         </html>
     `;
-    fs.writeFileSync(dist + platform + '/main.html', body, { encoding: "utf8" });
-    console.log("main.html has been created in", (Date.now() - start), "ms.");
+    fs.writeFileSync(dist + platform + '/index.html', body, { encoding: "utf8" });
+    console.log("index.html has been created in", (Date.now() - start), "ms.");
 }
 
 function copyFolder(src, dest){
     const   start = Date.now();
     fs.cpSync(src, dest, {recursive: true});
     console.log(src.replace('./', '') + " folder and files has been created in", (Date.now() - start), "ms.");
-}
-
-function createMain(){
-    const start = Date.now();
-    let body = fs.readFileSync('./main.js', {encoding:'utf8', flag:'r'});
-    // 
-    body = body.replace(/development:(.*)/gm, '');
-    body = body.replace(/readDataFolder(.*)/, '');
-    body = body.replace(/rootFolder(.*)/, '//rootFolder: \'\', //Edit this line if you need to read the data from specific folder.');
-    body = `// Check if player try to use this on sdk version
-if(process.versions['nw-flavor'] === 'sdk'){
-    alert('Oops! Don\\'t do that.');
-    nw.App.closeAllWindows();
-}\n` + body;
-    fs.writeFileSync(dist + platform + '/main.js', body, { encoding: "utf8" });
-    console.log("Main.js has been created in", (Date.now() - start), "ms.");
-}
-
-function createJSON(){
-    var start = Date.now();
-    const body = `
-    {
-        "name": "${package.name}",
-        "main": "${package.main}",
-        "version": "${package.version}",
-        "window": {
-            "width": 1024,
-            "height": 768,
-            "min_width": 1024,
-            "max_width": 2560,
-            "min_height": 768,
-            "max_height": 1440,
-            "fullscreen": false,
-            "frame": true,
-            "icon": "static/icon_128.png"
-        },
-        "build": {
-            "nwVersion": "${package.devDependencies.nw.replace('-sdk', '')}",
-            "nwFlavor": "normal",
-            "output": "../release/",
-            "win": {
-                "productName": "RONW",
-                "companyName": "RONW",
-                "icon": "static/icon.ico"
-            }
-        },
-        "chromium-args": "--enable-webgl --ignore-gpu-blacklist --enable-node-worker --user-data-dir=save --disable-raf-throttling",
-        "author": "MrUnzO (kwon.unzo@gmail.com)",
-        "license": "GNU GPL V3"
-    }
-    
-    `;
-    fs.writeFileSync(dist + platform + '/package.json', body, { encoding: "utf8" });
-    console.log("package.json has been created in", (Date.now() - start), "ms.");
 }
 
 function getArgs() {
