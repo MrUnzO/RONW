@@ -4608,25 +4608,25 @@ define(function( require )
 		}],
 
 		316: [{ //Warp Portal Animation 1	//EF_READYPORTAL2	Warp Portal Animation 1
-			alphaMax: 1,
+			alphaMax: 0.4,
 			animation: 4,
 			attachedEntity: true,
 			blendMode: 2,
 			blue: 1,
-			bottomSize: 2.7,
+			bottomSize: 2.4,
 			duration: 500,
-			duplicate: 15,
 			fadeOut: true,
-			green: 1,
+			green: 0.6,
 			height: 0.1,
 			posZ: 0.1,
-			red: 1,
+			red: 0.6,
 			rotate: true,
-			textureName: 'ring_white',
-			timeBetweenDupli: 200,
+			textureName: 'ring_blue',
+			repeat: true,
+			repeatDelay: -300,
 			topSize: 3.9,
-			type: 'CYLINDER',
-			wav: 'effect/ef_readyportal'
+			wav: 'effect/ef_readyportal',
+			type: 'CYLINDER'
 		}],
 
 		317: [{ //Warp Portal Animation 2	//EF_PORTAL2	Warp Portal Animation 2
@@ -4637,7 +4637,6 @@ define(function( require )
 			blue: 1,
 			bottomSize: 2.4,
 			duration: 500,
-			duplicate: 115,
 			fadeOut: true,
 			green: 0.6,
 			height: 0.1,
@@ -4645,7 +4644,8 @@ define(function( require )
 			red: 0.6,
 			rotate: true,
 			textureName: 'ring_blue',
-			timeBetweenDupli: 200,
+			repeat: true,
+			repeatDelay: -300,
 			topSize: 3.9,
 			wav: 'effect/ef_readyportal',
 			type: 'CYLINDER'
@@ -4656,7 +4656,7 @@ define(function( require )
 			blendMode: 2,
 			blue: 1,
 			bottomSize: 0.6,
-			duration: 24000,
+			duration: 30000,
 			fade: true,
 			green: 0.6,
 			height: 15,
@@ -4673,7 +4673,7 @@ define(function( require )
 			blendMode: 2,
 			blue: 1,
 			bottomSize: 0.8,
-			duration: 24000,
+			duration: 30000,
 			fade: true,
 			green: 0.6,
 			height: 13,
@@ -4689,7 +4689,7 @@ define(function( require )
 			blendMode: 2,
 			blue: 1,
 			bottomSize: 1,
-			duration: 24000,
+			duration: 30000,
 			fade: true,
 			green: 0.6,
 			height: 1,
@@ -7062,7 +7062,19 @@ define(function( require )
 		//560: [{}],	//EF_FASTBLUEFALL_90	   Juperos Energy Waterfall Fast (Vertical)
 		//561: [{}],	//EF_BIG_PORTAL	   Juperos Warp
 		//562: [{}],	//EF_BIG_PORTAL2	   Juperos Warp
-		//563: [{}],	//EF_SCREEN_QUAKE	   Earthquake Effect (Juperos Elevator)
+		
+		563: [{	//EF_SCREEN_QUAKE	   Earthquake Effect (Juperos Elevator)
+			type: 'FUNC',
+			attachedEntity: true,
+			func: function( Params ) {
+				var Camera = require('Renderer/Camera');
+				var start = Params.Inst.startTick;
+				var duration = 200;
+				var amt = [1,1,1];
+				Camera.setQuake( start, duration, amt[0], amt[1], amt[2] );
+			}
+		}],
+		
 		//564: [{}],	//EF_HOMUNCASTING	   Wedding Cast
 		
 		565: [{	//EF_HFLIMOON1	Filir Moonlight Lvl 1
