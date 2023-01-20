@@ -15,7 +15,8 @@
 	},
 	"scripts": {
 		"dev": "nw .",
-		"prod": "nw ./dist/",
+		"prod": "nw ./dist/NW",
+		"prod-web": "live-server ./dist/Web",
 		"build": "node ./tools/builder.js",
 		"build-web": "node ./tools/builder-web.js",
 		"release": "build --concurrent --tasks win-x86,win-x64 --mirror https://dl.nwjs.io/ ./dist",
@@ -25,9 +26,13 @@
 	"author": "MrUnzO (kwon.unzo@gmail.com)",
 	"license": "GNU GPL V3",
 	"devDependencies": {
+		"eslint": "8.32.0",
+		"eslint-config-prettier": "8.6.0",
+		"eslint-plugin-prettier": "4.2.1",
 		"live-server": "^1.2.2",
 		"nw": "0.71.1-sdk",
 		"nwjs-builder-phoenix": "^1.15.0",
+		"prettier": "2.8.3",
 		"requirejs": "^2.3.6",
 		"terser": "^5.16.1"
 	}
