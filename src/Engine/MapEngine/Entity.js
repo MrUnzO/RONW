@@ -2091,15 +2091,6 @@ define(function( require )
 			
 			var count = pkt.count || 1;
 			
-			if(dstEntity.action !== dstEntity.ACTION.DIE){
-				dstEntity.setAction({ // Stop walking and wait for attack to happen
-					action: dstEntity.ACTION.IDLE,
-					frame:  0,
-					repeat: true,
-					play:   true,
-				});
-			}
-			
 			function impendingAttack(){ // Get hurt when attack happens
 				if(dstEntity.action !== dstEntity.ACTION.DIE){
 					dstEntity.setAction({
@@ -2107,17 +2098,13 @@ define(function( require )
 						frame:  0,
 						repeat: false,
 						play:   true,
-					});
-				}
-			}
-			
-			function afterAction(){
-				if(dstEntity.action !== dstEntity.ACTION.DIE){
-					dstEntity.setAction({  // Wiggle-wiggle
-						action: dstEntity.ACTION.READYFIGHT,
-						frame:  0,
-						repeat: true,
-						play:   true,
+						next:	{
+							action: dstEntity.ACTION.READYFIGHT, // Wiggle-wiggle
+							delay:  pkt.attackedMT+0,
+							frame:  0,
+							repeat: true,
+							play:   true,
+						}
 					});
 				}
 			}
@@ -2130,7 +2117,6 @@ define(function( require )
 					Events.setTimeout( impendingAttack, pkt.attackMT + ((C_MULTIHIT_DELAY*1.75) * i) );
 				}
 			}
-			Events.setTimeout( afterAction,  pkt.attackMT + (C_MULTIHIT_DELAY * (count-1)) + (pkt.leftDamage?(C_MULTIHIT_DELAY*1.75):0) + pkt.attackedMT );
 		}
 	}
 	
