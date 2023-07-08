@@ -269,6 +269,8 @@ define(function( require )
 		Session.guildRight    =     0;
 
 		Session.homunId       =     0;
+		
+		Session.Entity.clevel = Session.Character.level;
 
 		BasicInfo.update('blvl', Session.Character.level );
 		BasicInfo.update('jlvl', Session.Character.joblevel );
@@ -609,7 +611,7 @@ define(function( require )
 		Events.clearTimeout(_walkTimer);
 
 		// If siting, update direction
-		if (Session.Entity.action === Session.Entity.ACTION.SIT /*|| KEYS.SHIFT see: http://forum.robrowser.com/index.php?topic=32240#msg32446 */) {
+		if (Session.Entity.action === Session.Entity.ACTION.SIT || KEYS.SHIFT) {
 			Session.Entity.lookTo( Mouse.world.x, Mouse.world.y );
 
 			var pkt     = new PACKET.CZ.CHANGE_DIRECTION();
@@ -712,6 +714,8 @@ define(function( require )
 
 		EntityManager.forEach(function(entity){
 			if (entity.objecttype != entity.constructor.TYPE_EFFECT &&
+				entity.objecttype != entity.constructor.TYPE_UNIT &&
+				entity.objecttype != entity.constructor.TYPE_TRAP &&
 				Math.round(entity.position[0]) === x &&
 				Math.round(entity.position[1]) === y) {
 				free = false;

@@ -413,43 +413,57 @@ define(['./SkillConst'], function(SK) {
 				action: entity.ACTION.ATTACK,
 				frame:  0,
 				repeat: false,
+				speed:  30,
 				play:   true,
 				next:   {
 					action: entity.ACTION.ATTACK,
 					frame:  0,
 					repeat: false,
+					speed:  30,
 					play:   true,
 					next:   {
 						action: entity.ACTION.ATTACK,
 						frame:  0,
 						repeat: false,
+						speed:  30,
 						play:   true,
 						next:   {
 							action: entity.ACTION.ATTACK,
 							frame:  0,
 							repeat: false,
+							speed:  30,
 							play:   true,
 							next:   {
 								action: entity.ACTION.ATTACK,
 								frame:  0,
 								repeat: false,
+								speed:  30,
 								play:   true,
 								next:   {
 									action: entity.ACTION.ATTACK,
 									frame:  0,
 									repeat: false,
+									speed:  30,
 									play:   true,
 									next:   {
 										action: entity.ACTION.ATTACK,
 										frame:  0,
 										repeat: false,
+										speed:  30,
 										play:   true,
 										next:   {
 											action: entity.ACTION.ATTACK,
 											frame:  0,
 											repeat: false,
+											speed:  30,
 											play:   true,
-											next:   false
+											next: {
+												action: entity.ACTION.READYFIGHT,
+												frame:  0,
+												repeat: true,
+												play:   true,
+												next:   false
+											}
 										}
 									}
 								}
@@ -473,38 +487,51 @@ define(['./SkillConst'], function(SK) {
 				action: entity.ACTION.ATTACK,
 				frame:  0,
 				repeat: false,
+				speed:  30,
 				play:   true,
 				next:   {
 					action: entity.ACTION.ATTACK,
 					frame:  0,
 					repeat: false,
+					speed:  30,
 					play:   true,
 					next:   {
 						action: entity.ACTION.ATTACK,
 						frame:  0,
 						repeat: false,
+						speed:  30,
 						play:   true,
 						next:   {
 							action: entity.ACTION.ATTACK,
 							frame:  0,
 							repeat: false,
+							speed:  30,
 							play:   true,
 							next:   {
 								action: entity.ACTION.ATTACK,
 								frame:  0,
 								repeat: false,
+								speed:  30,
 								play:   true,
 								next:   {
 									action: entity.ACTION.ATTACK,
 									frame:  0,
 									repeat: false,
+									speed:  30,
 									play:   true,
 									next:   {
 										action: entity.ACTION.ATTACK,
 										frame:  0,
 										repeat: false,
+										speed:  30,
 										play:   true,
-										next:   false
+										next: {
+											action: entity.ACTION.READYFIGHT,
+											frame:  0,
+											repeat: true,
+											play:   true,
+											next:   false
+										}
 									}
 								}
 							}
@@ -526,33 +553,45 @@ define(['./SkillConst'], function(SK) {
 				action: entity.ACTION.ATTACK,
 				frame:  0,
 				repeat: false,
+				speed:  30,
 				play:   true,
 				next:   {
 					action: entity.ACTION.ATTACK,
 					frame:  0,
 					repeat: false,
+					speed:  30,
 					play:   true,
 					next:   {
 						action: entity.ACTION.ATTACK,
 						frame:  0,
 						repeat: false,
+						speed:  30,
 						play:   true,
 						next:   {
 							action: entity.ACTION.ATTACK,
 							frame:  0,
 							repeat: false,
+							speed:  30,
 							play:   true,
 							next:   {
 								action: entity.ACTION.ATTACK,
 								frame:  0,
 								repeat: false,
+								speed:  30,
 								play:   true,
 								next:   {
 									action: entity.ACTION.ATTACK,
 									frame:  0,
 									repeat: false,
+									speed:  30,
 									play:   true,
-									next:   false
+									next: {
+										action: entity.ACTION.READYFIGHT,
+										frame:  0,
+										repeat: true,
+										play:   true,
+										next:   false
+									}
 								}
 							}
 						}

@@ -23,6 +23,7 @@ define(function( require )
 	var SkillEffect       = require('DB/Skills/SkillEffect');
 	var SkillActionTable  = require('DB/Skills/SkillAction');
 	var EffectConst       = require('DB/Effects/EffectConst');
+	var PetMessageConst   = require('DB/Pets/PetMessageConst');
 	var Sound             = require('Audio/SoundManager');
 	var Events            = require('Core/Events');
 	var Guild             = require('Engine/MapEngine/Guild');
@@ -30,6 +31,7 @@ define(function( require )
 	var Network           = require('Network/NetworkManager');
 	var PACKET            = require('Network/PacketStructure');
 	var PACKETVER	      = require('Network/PacketVerManager');
+	var MapPreferences    = require('Preferences/Map');
 	var Altitude          = require('Renderer/Map/Altitude');
 	var Renderer          = require('Renderer/Renderer');
 	var EntityManager     = require('Renderer/EntityManager');
@@ -221,6 +223,8 @@ define(function( require )
 		if(entity.objecttype === Entity.TYPE_HOM && pkt.GID === Session.homunId){
 			HomunInformations.startAI();
 		}
+		
+		processAura( entity );
 	}
 
 
@@ -927,7 +931,7 @@ define(function( require )
 
 		switch (pkt.type) {
 			case 0:
-				if(entity.objecttype === Entity.TYPE_EFFECT){
+				if(entity.objecttype === Entity.TYPE_EFFECT || entity.objecttype === Entity.TYPE_UNIT || entity.objecttype === Entity.TYPE_TRAP){
 					EffectManager.spamSkillZone(pkt.value, entity.position[0], entity.position[1], pkt.GID, entity.creatorGID);
 				} else {
 					entity.job = pkt.value;
@@ -1189,8 +1193,7 @@ define(function( require )
 			pkt.attackMT = Math.min( 9999, pkt.attackMT ); // FIXME: cap value ?
 			pkt.attackMT = Math.max(   1, pkt.attackMT );
 			srcEntity.attack_speed = pkt.attackMT;
-			
-			srcEntity.amotionTick = Renderer.tick + pkt.attackMT*2; // Add amotion delay
+			srcEntity.amotionTick = Renderer.tick + pkt.attackMT; // Add amotion delay
 
 			srcWeapon = 0;
 			if(srcEntity.weapon){
@@ -1237,7 +1240,7 @@ define(function( require )
 		if (dstEntity) {
 			var target = pkt.damage ? dstEntity : srcEntity;
 
-			if (pkt.damage && target && !(srcEntity == dstEntity && pkt.action == SkillAction.SKILL)) {
+			if (target && !(srcEntity == dstEntity && pkt.action == SkillAction.SKILL)) {
 				
 				// Will be hit actions
 				onEntityWillBeHitSub( pkt, dstEntity );
@@ -1245,21 +1248,21 @@ define(function( require )
 				var isCombo = target.objecttype !== Entity.TYPE_PC && pkt.count > 1;
 				var isBlueCombo = SkillBlueCombo.includes(pkt.SKID);
 				
-
 				var addDamage = function(i, startTick) {
 					
-					EffectManager.spamSkillHit( pkt.SKID, pkt.targetID, startTick, pkt.AID);
+					if(pkt.damage){ // Only if hits
+						EffectManager.spamSkillHit( pkt.SKID, pkt.targetID, startTick, pkt.AID);
+					}
 					
-					if(!isCombo && isBlueCombo){
-						 // Blue 'crit' non-combo EG: Rampage Blaster
+					if(!isCombo && isBlueCombo && pkt.damage){ // Blue 'crit' non-combo EG: Rampage Blaster that hits
 						Damage.add( pkt.damage / pkt.count, target, startTick, srcWeapon, Damage.TYPE.COMBO_B | ( (i+1) === pkt.count ? Damage.TYPE.COMBO_FINAL : 0 ) );
 					} else {
 						Damage.add( pkt.damage / pkt.count, target, startTick, srcWeapon); // Normal
 					}
 
 					// Only display combo if the target is not entity and
-					// there are multiple attacks
-					if (isCombo) {
+					// there are multiple attacks and actually hits
+					if (isCombo && pkt.damage) {
 						Damage.add(
 							pkt.damage / pkt.count * (i+1),
 							target,
@@ -1270,12 +1273,8 @@ define(function( require )
 					}
 				};
 
-				var addEffectBeforeHit = function(startTick){
-					EffectManager.spamSkillBeforeHit( pkt.SKID, pkt.targetID, startTick, pkt.AID);
-				};
-
 				for (var i = 0; i < pkt.count; ++i) {
-					addEffectBeforeHit( Renderer.tick + (C_MULTIHIT_DELAY * i));
+					EffectManager.spamSkillBeforeHit( pkt.SKID, pkt.targetID, Renderer.tick + (C_MULTIHIT_DELAY * i), pkt.AID);
 					addDamage(i, Renderer.tick + pkt.attackMT + (C_MULTIHIT_DELAY * i));
 				}
 			}
@@ -1755,6 +1754,7 @@ define(function( require )
                         play:   true,
                         next:   false
                     });
+					entity.isTrickDead = true;
                 }
                 if(pkt.state == 0) {
                     entity.setAction({
@@ -1764,6 +1764,7 @@ define(function( require )
                         play:   true,
                         next:   false
                     });
+					entity.isTrickDead = false;
                 }
                 break;
 
@@ -1830,6 +1831,8 @@ define(function( require )
 		if (entity === Session.Entity) {
 			StatusIcons.update( pkt.index, pkt.state, pkt.RemainMS );
 		}
+		
+		processAura( entity );
 	}
 	
 	
@@ -1868,6 +1871,8 @@ define(function( require )
 		entity.healthState = pkt.healthState;
 		entity.effectState = pkt.effectState;
 		entity.isPKModeON  = pkt.isPKModeON;
+		
+		processAura( entity );
 	}
 
 
@@ -2086,8 +2091,8 @@ define(function( require )
 	 * @param dstEntity - Reveiver entity
 	 */
 	function onEntityWillBeHitSub( pkt, dstEntity ){
-		// only if has damage and type is not endure and not lucky
-		if ((pkt.damage || pkt.leftDamage) && pkt.action !== 4 && pkt.action !== 9 && pkt.action !== 11) {
+		// only if has damage > 0 and type is not endure and not lucky
+		if ((pkt.damage > 0 || pkt.leftDamage > 0) && pkt.action !== 4 && pkt.action !== 9 && pkt.action !== 11) {
 			
 			var count = pkt.count || 1;
 			
@@ -2116,6 +2121,31 @@ define(function( require )
 				if( pkt.leftDamage ){
 					Events.setTimeout( impendingAttack, pkt.attackMT + ((C_MULTIHIT_DELAY*1.75) * i) );
 				}
+			}
+		}
+	}
+	
+	function processAura( entity ){
+		//TODO: fix this thing and add rebirth & 3rd class aura
+		if( Session.Playing && entity.clevel >= 99 ){
+			
+			var invisibleState = (	(entity._effectState & (StatusState.EffectState.INVISIBLE|StatusState.EffectState.HIDE|StatusState.EffectState.CLOAK|StatusState.EffectState.CHASEWALK)) 
+									|| !!entity.Shadowform 
+									|| !!entity.Camouflage 
+									|| !!entity.Stealthfield );
+			
+			if ( MapPreferences.aura && !invisibleState ) {
+				if( !entity.auraVisible ){ // must be inside check 
+					EffectManager.spam( { ownerAID: entity.GID, position: entity.position, effectId: EffectConst.EF_LEVEL99 } );
+					EffectManager.spam( { ownerAID: entity.GID, position: entity.position, effectId: EffectConst.EF_LEVEL99_2 } );
+					EffectManager.spam( { ownerAID: entity.GID, position: entity.position, effectId: EffectConst.EF_LEVEL99_3 } );
+					entity.auraVisible = true;
+				}
+			} else if ( entity.auraVisible ) {
+				EffectManager.remove( null, entity.GID, EffectConst.EF_LEVEL99 );
+				EffectManager.remove( null, entity.GID, EffectConst.EF_LEVEL99_2 );
+				EffectManager.remove( null, entity.GID, EffectConst.EF_LEVEL99_3 );
+				entity.auraVisible = false;
 			}
 		}
 	}

@@ -312,6 +312,7 @@ define(function( require )
 				break;
 
 			case StatusProperty.CLEVEL:
+				Session.Entity.clevel = amount;
 				BasicInfo.update('blvl', amount);
 				Equipment.onLevelUp();
 				ChangeCart.onLevelUp(amount);

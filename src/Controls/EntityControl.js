@@ -60,6 +60,7 @@ define(function( require )
 			case Entity.TYPE_PC:
 			case Entity.TYPE_ELEM:
 			case Entity.TYPE_HOM:
+			case Entity.TYPE_MERC:
 				// TODO: Check for pvp flag ?
 				if ((KEYS.SHIFT === false && Preferences.noshift === false) || this === Session.Entity)  {
 					if (!Camera.action.active ) {
@@ -72,6 +73,7 @@ define(function( require )
 				break;
 
 			case Entity.TYPE_MOB:
+			case Entity.TYPE_UNIT:
 				Cursor.setType( Cursor.ACTION.ATTACK );
 				break;
 
@@ -149,6 +151,7 @@ define(function( require )
 		switch (this.objecttype) {
 			case Entity.TYPE_PET:
 			case Entity.TYPE_HOM:
+			case Entity.TYPE_MERC:
 				break;
 
 			case Entity.TYPE_ITEM:
@@ -352,13 +355,14 @@ define(function( require )
 					if (!Camera.action.active) {
 						Cursor.setType( Cursor.ACTION.DEFAULT );
 					}
-					if(!Session.TouchTargeting){
+					if(!Session.TouchTargeting && !Session.autoFollow){
 						break;
 					}
 				}
 			// no break intended.
 
 			case Entity.TYPE_MOB:
+			case Entity.TYPE_UNIT:
 
 				// Start rendering the lock on arrow
 				this.attachments.add({
@@ -371,7 +375,7 @@ define(function( require )
 				});
 
 
-				if(!Session.TouchTargeting){
+				if(!Session.TouchTargeting && !Session.autoFollow){
 					var out   = [];
 					var count = PathFinding.search(
 						main.position[0] | 0, main.position[1] | 0,
@@ -424,6 +428,7 @@ define(function( require )
 			case Entity.TYPE_ELEM:
 			case Entity.TYPE_HOM:
 			case Entity.TYPE_MOB:
+			case Entity.TYPE_UNIT:
 				if (Entity.Manager.getFocusEntity()) {
 					Network.sendPacket(new PACKET.CZ.CANCEL_LOCKON());
 				}
@@ -494,7 +499,6 @@ define(function( require )
 				return;
 		}
 	}
-
 
 	/**
 	 * Export

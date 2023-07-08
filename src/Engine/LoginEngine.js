@@ -74,6 +74,10 @@ define(function( require )
 		Configs.setServer(server);
 		UIManager.removeComponents();
 		Session.LangType = 'langtype' in server ? parseInt(server.langtype, 10) : 1; // default to SERVICETYPE_AMERICA
+		
+		// Renewal switch
+		Session.isRenewal = Configs.get('renewal', false);
+		console.log( "%c[LOGIN] Game Mode: ", "color:#007000", (Session.isRenewal ? 'RENEWAL' : 'PRE-RENEWAL') );
 
 		/// Special thanks to curiosity, siriuswhite and ai4rei. See:
 		/// - http://hercules.ws/wiki/Clientinfo.xml

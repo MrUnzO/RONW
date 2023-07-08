@@ -185,7 +185,7 @@ define(function( require )
 
 		if (error) {
 			ChatBox.addText( DB.getMessage(error), ChatBox.TYPE.ERROR );
-			srcEntity.setAction(SkillActionTable['DEFAULT'](srcEntity, Renderer.tick));
+			srcEntity.setAction(SkillActionTable['DEFAULT']( srcEntity, Renderer.tick ));
 		}
 	}
 
@@ -538,9 +538,7 @@ define(function( require )
 		// Client side minimum delay
 		if (entity && entity.amotionTick > Renderer.tick){ // Can't spam skills faster than amotion
 			return;
-		} /*else {
-			entity.amotionTick = Renderer.tick + entity.attack_speed*2;
-		}*/
+		}
 		
 		target = EntityManager.get(targetID) || entity;
 		skill  = SkillWindow.getSkillById(id);
@@ -627,6 +625,11 @@ define(function( require )
 			entity = Session.Entity;
 		}
 		
+		// Client side minimum delay
+		if (entity && entity.amotionTick > Renderer.tick){ // Can't spam skills faster than amotion
+			return;
+		}
+		
 		pos    = entity.position;
 		skill  = SkillWindow.getSkillById(id);
 		out    = [];
@@ -669,8 +672,11 @@ define(function( require )
 			Network.sendPacket(pkt);
 			return;
 		}
+		
+		// Save the packet
+		Session.moveAction = pkt;
 
-		// Save the packet and move to the position
+		// Move to the position
 		if(isHomun){
 			pkt         = new PACKET.CZ.REQUEST_MOVENPC();
 			pkt.GID		= Session.homunId;

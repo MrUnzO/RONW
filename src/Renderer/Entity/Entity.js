@@ -61,8 +61,11 @@ define( function( require )
 	/**
 	 * Constantes
 	 */
-	Entity.TYPE_EFFECT    = -3;
-	Entity.TYPE_UNKNOWN   = -2;
+	
+	Entity.TYPE_EFFECT    = -5;
+	Entity.TYPE_UNKNOWN   = -4;
+	Entity.TYPE_UNIT      = -3;
+	Entity.TYPE_TRAP      = -2;
 	Entity.TYPE_WARP      = -1;
 	Entity.TYPE_PC        =  0;
 	Entity.TYPE_DISGUISED =  1;
@@ -92,6 +95,8 @@ define( function( require )
 	Entity.PickingPriority.Normal[Entity.TYPE_HOM]=			0;
 	Entity.PickingPriority.Normal[Entity.TYPE_MERC]=		0;
 	Entity.PickingPriority.Normal[Entity.TYPE_ELEM]=		0;
+	Entity.PickingPriority.Normal[Entity.TYPE_UNIT]=		0;
+	Entity.PickingPriority.Normal[Entity.TYPE_TRAP]=		0;
 	Entity.PickingPriority.Normal[Entity.TYPE_EFFECT]=		-1;
 	
 	Entity.PickingPriority.Support = {};
@@ -106,6 +111,8 @@ define( function( require )
 	Entity.PickingPriority.Support[Entity.TYPE_NPC]=		0;
 	Entity.PickingPriority.Support[Entity.TYPE_UNKNOWN]=	0;
 	Entity.PickingPriority.Support[Entity.TYPE_WARP]=		0;
+	Entity.PickingPriority.Support[Entity.TYPE_UNIT]=		0;
+	Entity.PickingPriority.Support[Entity.TYPE_TRAP]=		0;
 	Entity.PickingPriority.Support[Entity.TYPE_EFFECT]=		-1;
 	
 	
@@ -272,7 +279,7 @@ define( function( require )
 					this.position[0] = unit.MoveData[0];
 					this.position[1] = unit.MoveData[1];
 					this.position[2] = Altitude.getCellHeight(  unit.MoveData[0],  unit.MoveData[1] );
-					this.walkTo.apply( this, unit.MoveData );
+					this.walkTo.apply( this, [unit.MoveData[0], unit.MoveData[1], unit.MoveData[2], unit.MoveData[3]] );
 					break;
 
 				default:
@@ -388,9 +395,58 @@ define( function( require )
 		if (x === 0) dir = y >= 1 ? 4 : 0;
 		if (x <=-1 ) dir = y >= 1 ? 3 : y === 0 ? 2 : 1;
 
-		this.direction = dir;
+		var prevDirection = this.direction;
+		if (prevDirection === dir) {
+			// turn head straight
+			this.headDir = 0;
+		} else {
+			switch (((prevDirection-dir+8)%8)-4) {
+				// turn head left
+				case -3:
+					if (this.headDir === 2) {
+						this.direction = dir;
+						this.headDir = 0;
+						break;
+					}
+				case -2:	
+				case -1:
+					this.direction = (dir+9)%8;
+					this.headDir = 2;
+					break;
 
-		// Todo:update head direction
+				// turn head right
+				case  3:
+					if (this.headDir === 1) {
+						this.direction = dir;
+						this.headDir = 0;
+						break;
+					}
+				case  2:
+				case  1:
+					this.direction = (dir+7)%8;
+					this.headDir = 1;
+					break;
+
+				case  0:
+					switch(this.headDir) {
+						case 2:
+							this.direction = (dir+9)%8;
+							break;
+						case 1:
+							this.direction = (dir+7)%8;
+							break;
+
+						default:
+							this.direction = dir;
+							this.headDir = 0;
+					}
+					break;
+				
+				// turn
+				default:
+					this.direction = dir;
+			}
+		}
 	};
 
 

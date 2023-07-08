@@ -14,6 +14,7 @@ define(function()
 	return {
 		
 		isTouchDevice: false,
+		isRenewal: false,
 		TouchTargeting: false,
 		AutoTargeting: false,
 		
@@ -52,6 +53,9 @@ define(function()
 		CartNum: 0,
 		
 		homCustomAI: false,
-		merCustomAI: false
+		merCustomAI: false,
+		
+		autoFollow:       false,
+		autoFollowTarget: null,
 	};
 });
