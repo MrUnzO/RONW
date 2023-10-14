@@ -152,7 +152,7 @@ define(function( require )
 			}
 			EntityManager.add(entity);
 		}
-		
+
 		//check dual weapon
 		if(entity.objecttype === Entity.TYPE_PC){
 			if(
@@ -169,11 +169,11 @@ define(function( require )
 					pkt.weapon = pkt.shield;
 					pkt.shield = 0;
 				}
-				
+
 				if(!DB.isShield(pkt.shield) && pkt.weapon){
 					let _weapon = DB.getWeaponViewID(pkt.weapon);
 					let _shield = DB.getWeaponViewID(pkt.shield);
-					
+
 					if(_weapon === WeaponType.KATAR){
 						_shield = _weapon;
 					}
@@ -493,11 +493,11 @@ define(function( require )
 					pkt.attackMT = MAX_ATTACKMT;
 				}
 				srcEntity.attack_speed = pkt.attackMT;
-				
+
 				let animSpeed = 0;
 				let soundTime = 0;
 				let delayTime = pkt.attackMT;
-				
+
 				if (srcEntity.objecttype === Entity.TYPE_PC) {
 					const factorOfmotionSpeed = pkt.attackMT / AVG_ATTACK_SPEED;
 					const isDualWeapon = DB.isDualWeapon(srcEntity._job, srcEntity._sex, srcEntity.weapon);
@@ -522,6 +522,8 @@ define(function( require )
 						EffectManager.spam( EF_Init_Par );
 					}
 					animSpeed = pkt.attackMT / m_attackMotion;
+				}
+
 				// Display throw arrow effect when using bows, not an elegant conditional but it works.. [Waken]
 				if (weaponSound && weaponSound.includes('bow')) {
 					var EF_Init_Par = {
@@ -640,8 +642,8 @@ define(function( require )
 					srcEntity.lookTo( dstEntity.position[0], dstEntity.position[1] );
 				}
 
-				
-				
+
+
 				srcEntity.attack_speed = pkt.attackMT;
 
 
@@ -999,11 +1001,11 @@ define(function( require )
 							pkt.value = pkt.value2;
 							pkt.value2 = 0;
 						}
-						
+
 						if(!DB.isShield(pkt.value2) && pkt.value){
 							let _weapon = DB.getWeaponViewID(pkt.value);
 							let _shield = DB.getWeaponViewID(pkt.value2);
-							
+
 							if(_weapon === WeaponType.KATAR){
 								_shield = _weapon;
 							}
@@ -2067,6 +2069,8 @@ define(function( require )
 				ChatBox.addText(DB.getMessage(3227).replace('%lld', pkt.amount) + ' ' + DB.getMessage(1615), ChatBox.TYPE.INFO);
 			} else {
 				ChatBox.addText(DB.getMessage(3220).replace('%lld', pkt.amount) + ' ' + DB.getMessage(1615), ChatBox.TYPE.INFO);
+			}
+		}
 		if(pkt.expType == 1) {  // for now it will be only for quest (for common exp @showexp is much better)
 			if(pkt. varID == 1) {
 				ChatBox.addText( 'Experience gained from Quest, Base:'+pkt.amount, null, ChatBox.FILTER.EXP, '#A442DC');

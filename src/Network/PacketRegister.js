@@ -690,10 +690,9 @@ define( ['./PacketStructure' ], function( PACKET )
 		0xb6f: PACKET.HC.ACCEPT_MAKECHAR,
 		0xb8d: PACKET.ZC.REPUTE_INFO,
 
-		0xab2: PACKET.ZC.NOTIFY_PARTY_DEAD, // not implemented yet
 		0xabd: PACKET.ZC.UPDATE_PARTY_MEMBER, // not implemented yet
-		
-		
+
+
 		0xa78: PACKET.ZC.CAMERA_INFO, // not implemented yet
 		0xa9a: PACKET.ZC.EQUIPSWITCH_REMOVE, // not implemented yet
 
