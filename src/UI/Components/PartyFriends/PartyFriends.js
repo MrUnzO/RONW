@@ -279,11 +279,11 @@ define(function(require)
 
 		if (state) {
 			node.css('backgroundImage', '');
-			ChatBox.addText( DB.getMessage(1042).replace('%s', _friends[index].Name), ChatBox.TYPE.BLUE);
+			ChatBox.addText( DB.getMessage(1042).replace('%s', _friends[index].Name), ChatBox.TYPE.BLUE, ChatBox.FILTER.PUBLIC_LOG);
 			return;
 		}
 
-		ChatBox.addText( DB.getMessage(1041).replace('%s', _friends[index].Name), ChatBox.TYPE.BLUE);
+		ChatBox.addText( DB.getMessage(1041).replace('%s', _friends[index].Name), ChatBox.TYPE.BLUE, ChatBox.FILTER.PUBLIC_LOG);
 		Client.loadFile(DB.INTERFACE_PATH + 'basic_interface/grp_online.bmp', function(url){
 			node.css('backgroundImage', 'url(' + url + ')');
 		});
@@ -467,7 +467,7 @@ define(function(require)
 			this.ui.find('.party.create').show();
 			this.ui.find('.party.leave, .party.add').hide();
 
-			ChatBox.addText( DB.getMessage(84), ChatBox.TYPE.BLUE);
+			ChatBox.addText( DB.getMessage(84), ChatBox.TYPE.BLUE, ChatBox.FILTER.PARTY_SETUP);
 			return;
 		}
 
@@ -545,9 +545,12 @@ define(function(require)
 	 */
 	PartyFriends.setOptions = function setOptions( exp_share, item_share, item_sharing_type)
 	{
-		_options.exp_share         = exp_share;
-		_options.item_share        = item_share;
-		_options.item_sharing_type = item_sharing_type;
+		if (exp_share !== undefined)
+			_options.exp_share         = exp_share;
+		if (item_share !== undefined)
+			_options.item_share        = item_share;
+		if (item_sharing_type !== undefined)
+			_options.item_sharing_type = item_sharing_type;
 	};
 
 

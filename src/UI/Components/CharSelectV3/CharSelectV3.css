@@ -26,6 +26,7 @@
     height: 195px;
     float: left;
     position: relative;
+    z-index: 10;
 }
 #charselect_v3 .char_canvas .name {
     position: absolute;
@@ -88,7 +89,26 @@
     height: 24px;
     background-repeat: no-repeat;
     background-color: transparent;
- }
+}
+
+#charselect_v3 .btn.canceldelete {
+    position: absolute;
+    border: 0;
+    width: 131px;
+    height: 24px;
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+#charselect_v3 .btn.finaldelete {
+    position: absolute;
+    border: 0;
+    width: 131px;
+    height: 24px;
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
 #charselect_v3 .btn.ok {
     position: absolute;
     border: 0;
@@ -120,4 +140,26 @@
 #charselect_v3 .delete { 
     right: 33px;
     top: 300px;
- }
+}
+
+#charselect_v3 .canceldelete { 
+    right: 33px;
+    top: 300px;
+}
+
+#charselect_v3 .finaldelete { 
+    right: 33px;
+    top: 330px;
+}
+
+#charselect_v3 .timedelete {
+    position: relative;
+    height: 20px;
+    width: 100px;
+    top: -150px;
+    left: 40px;
+}
+
+#charselect_v3 .hidden {
+    display: none;
+}

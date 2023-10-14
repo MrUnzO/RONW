@@ -39,6 +39,7 @@ define(function(require)
 	var WeaponTrailTable = require('./Items/WeaponTrailTable');
 	var TownInfo         = require('./TownInfo');
 	var XmlParse		 = require('Vendors/xmlparse');
+	var QuestInfo        = require('./QuestTable');
 
 	//Pet
 	var PetEmotionTable 	= require('./Pets/PetEmotionTable')
@@ -46,8 +47,12 @@ define(function(require)
 	var PetFriendlyState 	= require('./Pets/PetFriendlyState')
 	var PetMessageConst 	= require('./Pets/PetMessageConst')
 
+	//MapName
+	var MapInfo       = require('./Map/MapTable')
+
 	var Network       = require('Network/NetworkManager');
 	var PACKET        = require('Network/PacketStructure');
+	var PACKETVER     = require('Network/PacketVerManager');
 
 	/**
 	 * DB NameSpace
@@ -880,6 +885,14 @@ define(function(require)
 	};
 
 	/**
+	 * Get back map information by mapname
+	 * @param {number} efst id
+	 */
+	DB.getMapInfo = function GetMapInfo(mapname) {
+		return MapInfo[mapname] || null;
+	};
+
+	/**
 	 * Is character id a baby ?
 	 *
 	 * @param {number} job id
@@ -899,7 +912,12 @@ define(function(require)
 	};
 
 	DB.getNameByGID = function getNameByGID (GID){
-		var pkt   = new PACKET.CZ.REQNAME_BYGID();
+		var pkt;
+		if(PACKETVER.value >= 20180307) {
+			pkt = new PACKET.CZ.REQNAME_BYGID2();
+		} else {
+			pkt = new PACKET.CZ.REQNAME_BYGID();
+		}
 		pkt.GID   = GID;
 		Network.sendPacket(pkt);
 		DB.CNameTable[pkt.GID] = 'Unknown';
@@ -1645,6 +1663,17 @@ define(function(require)
 	}
 
 	DB.UpdateOwnerName = {};
+
+	/**
+	 * Get Quest Info by ID
+	 *
+	 * @param {integer} questID (quest id)
+	 * 
+	 * @author alisonrag
+	 */
+	DB.getQuestInfo = function getQuestInfo(questID) {
+		return QuestInfo[questID] || { "Title": "Unknown Quest", "Description": "Uknown Quest", "Summary": "Uknown Quest", "IconName": "", "NpcSpr": null, "NpcNavi": null, "NpcPosX": null, "NpcPosY": null, "RewardItemList": null, "RewardEXP": 0, "RewardJEXP": 0 };
+	};
 
 	/**
 	 * Export

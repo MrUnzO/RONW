@@ -34,6 +34,6 @@
 		"nwjs-builder-phoenix": "^1.15.0",
 		"prettier": "2.8.3",
 		"requirejs": "^2.3.6",
-		"terser": "^5.16.1"
+		"terser": "^5.19.4"
 	}
 }

@@ -78,6 +78,17 @@ define(function( require )
 		}
 	}
 
+	function getOpt3(state){
+		if (state === 0){
+			return false;
+		}
+		var value = _stateToVirtue[state];
+		if (value === undefined){
+			console.log('toggleState: unknown state', state);
+			return false;
+		}
+		return (this.virtue & value) !== 0;
+	}
 	function updateVirtue(value){
 		// Reset value
 		this._virtueColor[0] = 1.0;
@@ -94,13 +105,13 @@ define(function( require )
             this._virtueColor[1] = 0.75;
             this._virtueColor[2] = 0.75;
 		}
-        
+
 		if (value & StatusConst.OPT3.BLADESTOP){
 			this._virtueColor[0] = 0.25;
 			this._virtueColor[1] = 0.25;
 			this._virtueColor[2] = 0.25;
 		}
-        
+
 		if ((value & StatusConst.OPT3.ENERGYCOAT) ||
             (value & StatusConst.OPT3.BUNSIN) ){
 			this._virtueColor[0] = 0.5;
@@ -125,17 +136,23 @@ define(function( require )
 			this._virtueColor[3] = 0.90;
 		}
 
-        if (value & StatusConst.OPT3.UNDEAD){
+    if (value & StatusConst.OPT3.UNDEAD){
 			this._virtueColor[0] = 0.70;
 			this._virtueColor[2] = 0.65;
 		}
 
-		if ((value & StatusConst.OPT3.MARIONETTE) ||
-			(value & StatusConst.OPT3.BERSERK) ){
+		if (value & StatusConst.OPT3.MARIONETTE){
 			this._virtueColor[0] = 1.0;
-			this._virtueColor[1] = 0.3;
-			this._virtueColor[2] = 0.7;
+			this._virtueColor[1] = 0.34;
+			this._virtueColor[2] = 0.71;
 			this._virtueColor[3] = 0.5;
+		}
+
+		if (value & StatusConst.OPT3.BERSERK) {
+			this._virtueColor[0] = 1.0;
+			this._virtueColor[1] = 0.4;
+			this._virtueColor[2] = 0.4;
+			this._virtueColor[3] = 1.0;
 		}
 
 		recalculateBlendingColor.call(this);
@@ -184,7 +201,7 @@ define(function( require )
 				break;
 
 			case StatusConst.BodyState.STONE:
-				Sound.playPosition('_stone_explosion.wav', this.position);								   
+				Sound.playPosition('_stone_explosion.wav', this.position);
 				this.animation.play = true;
 				break;
 
@@ -206,7 +223,7 @@ define(function( require )
 				this._bodyStateColor[0] = 0.3;
 				this._bodyStateColor[1] = 0.3;
 				this._bodyStateColor[2] = 0.3;
-				Sound.playPosition('_stonecurse.wav', this.position);							  
+				Sound.playPosition('_stonecurse.wav', this.position);
 				break;
 
 			case StatusConst.BodyState.SLEEP:
@@ -327,7 +344,7 @@ define(function( require )
 		} else if (!(value & StatusConst.HealthState.SILENCE)) {
 			this.attachments.remove('status-silence');
 		}
-		
+
 		this._healthState = value;
 		recalculateBlendingColor.call(this);
 	}
@@ -341,16 +358,16 @@ define(function( require )
 	function updateEffectState( value )
 	{
 		var costume = 0;
-		
+
 		if (this._allRidingState){ // Preserve riding constume
-			costume = this.costume; 
+			costume = this.costume;
 		}
 
 		this._effectStateColor[0] = 1.0;
 		this._effectStateColor[1] = 1.0;
 		this._effectStateColor[2] = 1.0;
 		this._effectStateColor[3] = 1.0;
-		
+
 		// ------------------------
 		// Riding
 		// ------------------------
@@ -372,7 +389,7 @@ define(function( require )
 				costume = MountTable[this._job];
 			}
 		}
-		
+
 		// ------------------------
 		// Costume
 		// ------------------------
@@ -383,7 +400,7 @@ define(function( require )
 			costume = 22;
 		}
 
-		// Xmas costume 
+		// Xmas costume
 		if (value & StatusConst.EffectState.XMAS) {
 			costume = 26;
 		}
@@ -416,7 +433,7 @@ define(function( require )
 				this._effectStateColor[3] = 0.0;
 			}
 		}
-		
+
 		// Camouflage / Stealth Field (receiver)
 		else if (this.Camouflage || this.Stealthfield){
 			// Maya purple card
@@ -430,7 +447,7 @@ define(function( require )
 				Sound.play('effect/assasin_cloaking.wav', this.position);
 			}
 		}
-		
+
 		// Shadow form
 		else if (this.Shadowform) {
 			// Maya purple card
@@ -482,13 +499,13 @@ define(function( require )
 			StatusConst.EffectState.XMAS	|
 			StatusConst.EffectState.SUMMER
 		);
-		
+
 		if (value && !(this._effectState & EFFECT)) {
 			if (this._job in AllMountTable) {
 				costume = AllMountTable[this._job];
 			}
 		}
-		
+
 
 		// ------------------------
 		// Apply
@@ -497,12 +514,34 @@ define(function( require )
 			this.costume = costume;
 			this.job     = this._job;
 		}
-		
+
 		this._allRidingState = value;
 		recalculateBlendingColor.call(this);
 	}
-	
-	
+
+	function isVisible()
+	{
+		return !(
+			(
+				this._effectState & (
+					StatusConst.EffectState.INVISIBLE
+					| StatusConst.EffectState.HIDE
+					| StatusConst.EffectState.CLOAK
+					| StatusConst.EffectState.CHASEWALK
+				)
+			)
+			|| !!this.Shadowform
+			|| !!this.Camouflage
+			|| !!this.Stealthfield
+		);
+	}
+
+	function isDead()
+	{
+		return this.action === this.ACTION.DIE;
+	}
+
+
 	/**
 	 * Hooking, export
 	 */
@@ -514,6 +553,8 @@ define(function( require )
 		this._virtueColor      = new Float32Array([1, 1, 1, 1]);
 		this._flashColor       = new Float32Array([1, 1, 1, 1]);
 		this.effectColor       = new Float32Array([1, 1, 1, 1]);
+		this.isVisible         = isVisible.bind(this);
+		this.isDead            = isDead.bind(this);
 
 
 		Object.defineProperty(this, 'bodyState', {
@@ -530,7 +571,7 @@ define(function( require )
 			get: function(){ return this._effectState; },
 			set: updateEffectState
 		});
-		
+
 		Object.defineProperty(this, 'allRidingState', {
 			get: function(){ return this._allRidingState; },
 			set: updateAllRidingState
@@ -542,6 +583,7 @@ define(function( require )
 		});
 
 		this.toggleOpt3 = toggleOpt3;
+		this.getOpt3 = getOpt3;
         this.recalculateBlendingColor = recalculateBlendingColor;
 	};
 });

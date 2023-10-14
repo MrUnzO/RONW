@@ -22,8 +22,8 @@ define(function(require)
 	var Preferences  = require('Core/Preferences');
 	var Session      = require('Engine/SessionStorage');
 	var Mouse        = require('Controls/MouseEventHandler');
-	var PACKETVER    = require('Network/PacketVerManager');
 	var Network      = require('Network/NetworkManager');
+	var PACKETVER    = require('Network/PacketVerManager');
 	var PACKET       = require('Network/PacketStructure');
 	var KEYS         = require('Controls/KeyEventHandler');
 	var UIManager    = require('UI/UIManager');
@@ -549,7 +549,7 @@ define(function(require)
 				// You don't have enough zeny
 				if (_type === NpcStore.Type.BUY || _type === NpcStore.Type.VENDING_STORE) {
 					if (NpcStore.calculateCost() + (_input[index].discountprice || _input[index].price) * count > Session.zeny) {
-						ChatBox.addText( DB.getMessage(55), ChatBox.TYPE.ERROR);
+						ChatBox.addText( DB.getMessage(55), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
 						return;
 					}
 				}

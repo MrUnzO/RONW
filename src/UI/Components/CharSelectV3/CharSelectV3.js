@@ -28,6 +28,7 @@ define(function(require)
     var htmlText           = require('text!./CharSelectV3.html');
     var cssText            = require('text!./CharSelectV3.css');
     var Client             = require('Core/Client');
+    var jQuery             = require('Utils/jquery');
     var jQuery    = require('Utils/jquery');
 
 
@@ -86,6 +87,14 @@ define(function(require)
      */
     var _sex = 0;
 
+    /**
+     * var for background change
+     */
+    var img = 0;
+    var _curindex = 0;
+    var shouldRunBackgroundChange = false;
+
+    let countdownInterval; // Variable to hold the interval
 
     /**
      * Initialize UI
@@ -97,7 +106,9 @@ define(function(require)
         // Bind buttons
         ui.find('.ok'    ).click(connect);
         ui.find('.cancel').click(cancel);
-        ui.find('.delete').click(suppress);
+        ui.find('.delete').click(reserve);
+        ui.find('.canceldelete').click(removedelete);
+        ui.find('.finaldelete').click(suppress);
 
         // Bind canvas
         ui.find('#slot0').mousedown(genericCanvasDown(0));
@@ -138,7 +149,11 @@ define(function(require)
      */
     CharSelectV3.onAppend = function onAppend()
     {
-        _index = _preferences.index;
+        //_index = _preferences.index;
+        const charselectready = CharSelectV3.ui;
+        if (charselectready) {
+            startCountdownInterval();
+        }
 
         // Update values
         moveCursorTo(_index);
@@ -228,6 +243,158 @@ define(function(require)
         moveCursorTo( _index );
     };
 
+    /**
+     * Format delay duration
+     */
+    function formatDuration(seconds) {
+		const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
+
+        // Use the msgstringtable
+        let formattedDuration = DB.getMessage(3349)
+        .replace('%d', `${hours}` )
+        .replace('%d', `${minutes}`)
+        .replace('%d', `${remainingSeconds}`);
+
+        return formattedDuration;
+    }
+
+    /**
+     * Countdown for delay in deletion
+     */
+    function updateAllVisibleCountdowns() {
+        var charselectready = CharSelectV3.ui;
+        if (charselectready) {
+            const visibleCountdowns = document.querySelectorAll('.timedelete:not(.hidden)');
+
+            visibleCountdowns.forEach(countdownDiv => {
+            const deleteReservedDuration = parseInt(countdownDiv.dataset.duration, 10);
+            const updatedDuration = Math.max(0, deleteReservedDuration - 1); // Ensure non-negative duration
+
+            countdownDiv.textContent = formatDuration(updatedDuration);
+            if (updatedDuration > 0)
+                countdownDiv.style.color = "red";
+            else
+                countdownDiv.style.color = "blue";
+
+            countdownDiv.dataset.duration = updatedDuration.toString();
+            });
+        }
+    }
+
+    /**
+    * Start the countdown update interval only when in CharSelectV3 UI
+    */
+    function startCountdownInterval() {
+        if (!countdownInterval) {
+            countdownInterval = setInterval(updateAllVisibleCountdowns, 1000);
+        }
+    }
+
+    /**
+     * Stop the countdown update interval
+     */
+    function stopCountdownInterval() {
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+    }
+
+    /**
+     * Result of Request in Deleting the Character
+     * 
+     * @param {object} pkt - packet structure
+     */
+    CharSelectV3.reqdeleteAnswer = function ReqDelAnswer ( pkt )
+    {
+        this.on('keydown');
+		var deleteReservedDate = pkt.DeleteReservedDate;
+        var result = typeof( pkt.Result ) === 'undefined' ? -1 : pkt.Result;
+        var info = _slots[_index];
+
+        switch (result) {
+            case 0: // 0: An unknown error has occurred.
+                return;
+
+            case 1: // 1: none/success
+                var now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
+                info.DeleteDate = deleteReservedDate + now;
+                requestdelete(_index, deleteReservedDate);
+                break;
+
+            case 3: // 3: A database error occurred.
+                return;
+
+            case 4: // 4: To delete a character you must withdraw from the guild.
+                UIManager.showMessageBox( DB.getMessage(1818), 'ok' );
+                break;
+            case 5: // 5: To delete a character you must withdraw from the party.
+                UIManager.showMessageBox( DB.getMessage(1819), 'ok' );
+                break;
+            
+            default:
+                return;
+        }
+    }
+    
+    /**
+     * When successfully requested for character deletion
+     * Update UI and add timer
+     */
+    function requestdelete ( index, timer )
+    {
+        // Make it sit
+        _entitySlots[index].action = 2;
+        //render();
+
+        // Add the timer
+        const countdown = document.querySelector('.timedelete.slot' + index);
+        if (countdown) {
+            countdown.setAttribute('data-duration', timer);
+            countdown.classList.remove('hidden');
+            countdown.style.display = "block";
+        }
+
+        // Adjust the buttons
+        CharSelectV3.ui.find('.delete').hide();
+        CharSelectV3.ui.find('.canceldelete').show();
+        CharSelectV3.ui.find('.finaldelete').show();
+    }
+
+    /**
+     * Cancel reservation of character for deletion
+     * Update UI and remove timer
+     */
+    function removedelete ()
+    {
+        if (_slots[_index]) {
+            
+            // Delete here as well? Though server should tell us this
+            _slots[_index].DeleteDate = 0;
+
+            // Make it stand
+            _entitySlots[_index].action = 0;
+            render();
+
+            // Remove the timer
+            const countdown = document.querySelector('.timedelete.slot' + _index);  // Adjusted selector
+            if (countdown) {
+                countdown.setAttribute('data-duration', 0);
+                countdown.classList.add('hidden');
+                countdown.style.display = "none";
+            }
+
+            // Adjust the buttons
+            CharSelectV3.ui.find('.canceldelete').hide();
+            CharSelectV3.ui.find('.finaldelete').hide();
+            CharSelectV3.ui.find('.delete').show();
+
+            // Send request to the server
+            CharSelectV3.onCancelDeleteRequest(_slots[_index].GID);
+        }
+    }
 
     /**
      * Answer from server to delete a character
@@ -240,13 +407,17 @@ define(function(require)
 
         switch (error) {
             // Do nothing, just re-set the keydown
+            case -1:
             case -2:
                 return;
 
             // Success (clean up character)
-            case -1:
+            case 1:
                 delete _slots[_index];
                 delete _entitySlots[_index];
+
+                if (_preferences.index === _index)
+                    _preferences.index = 0;
 
                 var i = 0;
                 var count = _list.length;
@@ -266,9 +437,23 @@ define(function(require)
                 return;
 
             default: // Others error ?
-            case  0: // Incorrect adress email
+            case 0:
+            case 2: // 2: Due to system settings can not be deleted.
+            case 6: // 6: Name does not match.
+                UIManager.showMessageBox( DB.getMessage(1821), 'ok' );
+                return;
+            case 3: // 3: A database error occurred.
+                UIManager.showMessageBox( DB.getMessage(1817), 'ok' );
+                return;
+            case 4: // 4: Deleting not yet possible time.
+                UIManager.showMessageBox( DB.getMessage(1820), 'ok' );
+                return;
+            case 5: // 5: Date of birth do not match.
+                UIManager.showMessageBox( DB.getMessage(1822), 'ok' );
+                return;
+            case 7: // 7: Character Deletion has failed because you have entered an incorrect e-mail address.
                 UIManager.showMessageBox( DB.getMessage(301), 'ok' );
-                break;
+                return;
         }
     };
 
@@ -290,6 +475,7 @@ define(function(require)
         _entitySlots[ character.CharNum ] = new Entity();
         _entitySlots[ character.CharNum ].set( character );
         _entitySlots[ character.CharNum ].hideShadow = true;
+        updateCharSlot();
     };
     
 
@@ -299,8 +485,10 @@ define(function(require)
      */
     CharSelectV3.onExitRequest    = function onExitRequest(){};
     CharSelectV3.onDeleteRequest  = function onDeleteRequest(){};
+    CharSelectV3.onDeleteReqDelay = function onDeleteReqDelay(){};
     CharSelectV3.onCreateRequest  = function onCreateRequest(){};
     CharSelectV3.onConnectRequest = function onConnectRequest(){};
+    CharSelectV3.onCancelDeleteRequest = function onCancelDeleteRequest(){};
 
 
     /**
@@ -327,6 +515,7 @@ define(function(require)
             CharSelectV3.onExitRequest();
             updateCharSlot();
         }, null);
+        stopCountdownInterval();
     }
 
 
@@ -343,13 +532,23 @@ define(function(require)
      * Select Player, connect
      */
     function connect() {
-        if (_slots[_index]) {
+        if ((_slots[_index]) && (!_slots[_index].DeleteDate)) {
             _preferences.index = _index;
             _preferences.save();
             CharSelectV3.onConnectRequest( _slots[_index] );
+            stopCountdownInterval();
         }
     }
 
+    /**
+     * Request to delete a character
+     */
+    function reserve() {
+        if (_slots[_index]) {
+            CharSelectV3.off('keydown');
+            CharSelectV3.onDeleteReqDelay( _slots[_index].GID );
+        }
+    }
 
     /**
      * Delete a character
@@ -374,6 +573,9 @@ define(function(require)
 
         var entity = _slots[_index];
         var prevIndex = _index;
+        // Update the flag based on whether an entity is present
+        shouldRunBackgroundChange = false;
+
         if (entity) {
             Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot_normal.bmp", function(dataURI) {
                 ui.find('#slot'+ prevIndex).css('backgroundImage', 'url(' + dataURI + ')');
@@ -381,16 +583,47 @@ define(function(require)
         }
 
         var slotIndex = _index = index > _maxSlots ? _maxSlots : (index < 0 ? 0: index);
+
         
         // Not found, just clean up.
         entity = _slots[_index];
         if (!entity) {
             $charinfo.find('div').empty();
             ui.find('.delete').hide();
+            ui.find('.canceldelete').hide();
+            ui.find('.finaldelete').hide();
             ui.find('.ok').hide();
+            var countdown = document.querySelector('.timedelete.slot' + _index);
+            if (countdown) {
+                countdown.setAttribute('data-duration', 0);
+                countdown.classList.add('hidden');
+                countdown.style.display = "none";
+            }
             return;
+        } else {
+            _curindex = slotIndex;
+            shouldRunBackgroundChange = true;
         }
 
+        // Call changeBackgroundEverySecond if the flag is true
+        if (shouldRunBackgroundChange === true) {
+            changeBackgroundEverySecond();
+        }
+
+        var info = _slots[_index];
+        // Bind new value
+        if (info.DeleteDate) {
+            ui.find('.delete').hide();
+            ui.find('.canceldelete').show();
+            ui.find('.finaldelete').show();
+        } else {
+            ui.find('.canceldelete').hide();
+            ui.find('.finaldelete').hide();
+            ui.find('.delete').show();
+        }
+
+        ui.find('.ok').show();
+        
         Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot_select.bmp", function(dataURI) {
             ui.find('#slot'+ slotIndex).css('backgroundImage', 'url(' + dataURI + ')');
         });
@@ -414,6 +647,25 @@ define(function(require)
         $charinfo.find('.luk').text( info.Luk );
     }
 
+    function changeBackgroundEverySecond() {
+        var UIready = CharSelectV3.ui;
+        if (UIready) {
+            var backgroundchange = CharSelectV3.ui.find('#slot'+ _curindex);
+            if (backgroundchange && shouldRunBackgroundChange === true) {
+                Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot_select"+img+".bmp", function(dataURI) {
+                    backgroundchange.css({'backgroundImage': 'url(' + dataURI + ')',
+                    'width': '157px', 'height': '197px', 'background-size': 'contain', 'background-repeat': 'no-repeat' });
+                });
+
+                // Increment the slot index and wrap around if needed
+                img = (img + 1) % 8;
+            }
+        }
+    }
+
+    // Change the background every millisecond
+    setInterval(changeBackgroundEverySecond, 150);
+
     function updateCharSlot(){
         for (let i = 0; i < _maxSlots; ++i) {
             jQuery(CharSelectV3.ui.find(".char_canvas")[i]).find('.name').html(_slots[i] !== undefined ? _slots[i].name:"");
@@ -424,6 +676,32 @@ define(function(require)
                     Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot2_normal.bmp", function(dataURI) {
                         CharSelectV3.ui.find('#slot'+ slotNum).css('backgroundImage', 'url(' + dataURI + ')');
                     });
+                }
+                const countdown = document.querySelector('.timedelete.slot' + slotNum);  // Adjusted selector
+                if (countdown) {
+                    countdown.setAttribute('data-duration', 0);
+                    countdown.classList.add('hidden');
+                    countdown.style.display = "none";
+                }
+            }else{
+                Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot_normal.bmp", function(dataURI) {
+                    CharSelectV3.ui.find('#slot'+ i).css('backgroundImage', 'url(' + dataURI + ')');
+                });
+                
+                const slotJobIcon = jQuery(CharSelectV3.ui.find(".job_icon")[i]);
+                
+                Client.loadFile( DB.INTERFACE_PATH + "renewalparty/icon_jobs_"+_slots[i].job+".bmp", function(dataURI) {
+                    slotJobIcon.css('backgroundImage', 'url(' + dataURI + ')');
+                });
+
+                if (_slots[i].DeleteDate) {
+                    const slotNum = i;
+                    const countdown = document.querySelector('.timedelete.slot' + slotNum);  // Adjusted selector
+                    if (countdown) {
+                        countdown.setAttribute('data-duration', _slots[i].DeleteDate);
+                        countdown.classList.remove('hidden');
+                        countdown.style.display = "block";
+                    }
                 }
             }else{
                 CharSelectV3.ui.find('#slot'+ i).css("background-image", "");
@@ -447,12 +725,13 @@ define(function(require)
         idx              = Math.floor(_index / _maxSlots) * _maxSlots;
         count            = _ctx.length;
 
-
         for (i = 0; i < count; ++i) {
             _ctx[i].clearRect(0, 0, _ctx[i].canvas.width, _ctx[i].canvas.height);
 
             if (_entitySlots[idx+i]) {
                 SpriteRenderer.bind2DContext(_ctx[i], 78, 157);
+                if (_slots[i].DeleteDate)   // Pending for Deletion Characters are sitting
+                    _entitySlots[idx+i].action  = 2;
                 _entitySlots[idx+i].renderEntity();
             }
         }

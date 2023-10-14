@@ -18,8 +18,8 @@ define(function(require)
 	var DB                 = require('DB/DBManager');
 	var StatusConst        = require('DB/Status/StatusState');
 	var EquipLocation      = require('DB/Items/EquipmentLocation');
-	var Network          = require('Network/NetworkManager');
-	var PACKET           = require('Network/PacketStructure');
+	var Network            = require('Network/NetworkManager');
+	var PACKET             = require('Network/PacketStructure');
 	var ItemType           = require('DB/Items/ItemType');
 	var jQuery             = require('Utils/jquery');
 	var Client             = require('Core/Client');
@@ -28,6 +28,7 @@ define(function(require)
 	var Renderer           = require('Renderer/Renderer');
 	var Camera             = require('Renderer/Camera');
 	var SpriteRenderer     = require('Renderer/SpriteRenderer');
+	var UIVersionManager   = require('UI/UIVersionManager');
 	var UIManager          = require('UI/UIManager');
 	var UIComponent        = require('UI/UIComponent');
 	var ItemInfo           = require('UI/Components/ItemInfo/ItemInfo');
@@ -85,26 +86,30 @@ define(function(require)
 	Equipment.init = function init()
 	{
 		_ctx = this.ui.find('canvas')[0].getContext('2d');
+		if (UIVersionManager.getEquipmentVersion() > 0) {
+			// Get button to open skill when level up
+			_btnLevelUp = jQuery('#lvlup_base')
+				.detach()
+				.mousedown(stopPropagation)
+				.click(function () {
+					_btnLevelUp.detach();
+					Equipment.ui.show();
+					Equipment.ui.parent().append(Equipment.ui);
 
-		// Get button to open skill when level up
-		_btnLevelUp = jQuery('#lvlup_base')
-			.detach()
-			.mousedown(stopPropagation)
-			.click(function(){
-				_btnLevelUp.detach();
-				Equipment.ui.show();
-				Equipment.ui.parent().append(Equipment.ui);
+					if (Equipment.ui.is(':visible')) {
+						Renderer.render(renderCharacter);
+					}
+				});
 
-				if (Equipment.ui.is(':visible')) {
-					Renderer.render(renderCharacter);
-				}
-			});
-
-		// Append WinStats to content (hacked)
-		WinStats.prepare();
-		WinStats.__loaded = true;
-		this.ui.find('.status_component').append(WinStats.ui);
-
+			// Append WinStats to content (hacked)
+			WinStats.prepare();
+			WinStats.__loaded = true;
+			this.ui.find('.status_component').append(WinStats.ui);
+		} else {
+			this.ui.find('#equipment_footer').remove();
+			this.ui.addClass('equipmentV0');
+			this.ui.find('#lvlup_base').remove();
+		}
 		// Don't activate drag drop when clicking on buttons
 		this.ui.find('.titlebar .base').mousedown(stopPropagation);
 		this.ui.find('.titlebar .mini').click(function(){ Equipment.ui.find('.panel').toggle(); });
@@ -183,11 +188,13 @@ define(function(require)
 		}
 
 		// Show status window ?
-		if (!_preferences.stats) {
-			this.ui.find('.status_component').hide();
-			Client.loadFile( DB.INTERFACE_PATH + 'basic_interface/viewon.bmp', function(data){
-				this.ui.find('.view_status').css('backgroundImage', 'url(' + data + ')');
-			}.bind(this));
+		if (UIVersionManager.getEquipmentVersion() > 0) {
+			if (!_preferences.stats) {
+				this.ui.find('.status_component').hide();
+				Client.loadFile( DB.INTERFACE_PATH + 'basic_interface/viewon.bmp', function(data){
+					this.ui.find('.view_status').css('backgroundImage', 'url(' + data + ')');
+				}.bind(this));
+			}
 		}
 
 		if (this.ui.find('canvas').is(':visible')) {
@@ -201,7 +208,9 @@ define(function(require)
 	 */
 	Equipment.onRemove = function onRemove()
 	{
-		_btnLevelUp.detach();
+		if (UIVersionManager.getEquipmentVersion() > 0) {
+			_btnLevelUp.detach();
+		}
 
 		// Stop rendering
 		Renderer.stop(renderCharacter);
@@ -229,7 +238,9 @@ define(function(require)
 
 		if (this.ui.is(':visible')) {
 			Renderer.render(renderCharacter);
-			_btnLevelUp.detach();
+			if (UIVersionManager.getEquipmentVersion() > 0) {
+				_btnLevelUp.detach();
+			}
 			this.focus();
 		}
 		else {
@@ -333,7 +344,9 @@ define(function(require)
 	 */
 	Equipment.onLevelUp = function onLevelUp()
 	{
-		_btnLevelUp.appendTo('body');
+		if (UIVersionManager.getEquipmentVersion() > 0) {
+			_btnLevelUp.appendTo('body');
+		}
 	};
 
 
@@ -352,15 +365,17 @@ define(function(require)
 	 */
 	function toggleStatus()
 	{
-		var status = Equipment.ui.find('.status_component');
-		var self   = Equipment.ui.find('.view_status');
-		var state  = status.is(':visible') ? 'on' : 'off';
+		if (UIVersionManager.getEquipmentVersion() > 0) {
+			var status = Equipment.ui.find('.status_component');
+			var self   = Equipment.ui.find('.view_status');
+			var state  = status.is(':visible') ? 'on' : 'off';
 
-		status.toggle();
+			status.toggle();
 
-		Client.loadFile( DB.INTERFACE_PATH + 'basic_interface/view' + state + '.bmp', function(data){
-			self.css('backgroundImage', 'url(' + data + ')');
-		});
+			Client.loadFile( DB.INTERFACE_PATH + 'basic_interface/view' + state + '.bmp', function(data){
+				self.css('backgroundImage', 'url(' + data + ')');
+			});
+		}
 	}
 
 
@@ -394,7 +409,7 @@ define(function(require)
 		};
 
 		// Current removable options
-		var OptionFlag =
+		var HasAttachmentState =
 			StatusConst.EffectState.FALCON   |
 			StatusConst.EffectState.RIDING   |
 			StatusConst.EffectState.DRAGON1  |
@@ -409,7 +424,14 @@ define(function(require)
 			StatusConst.EffectState.CART4    |
 			StatusConst.EffectState.CART5;
 
-		return function rencerCharacter()
+		var HasCartState =
+			StatusConst.EffectState.CART1    |
+			StatusConst.EffectState.CART2    |
+			StatusConst.EffectState.CART3    |
+			StatusConst.EffectState.CART4    |
+			StatusConst.EffectState.CART5;
+
+		return function renderCharacter()
 		{
 			var character = Session.Entity;
 			var direction = character.direction;
@@ -422,13 +444,18 @@ define(function(require)
 				_lastState = character.effectState;
 				_hasCart   = character.hasCart;
 
-				if (_lastState & OptionFlag || _hasCart) {
-					Equipment.ui.find('.cartitems').show();
+				if (_lastState & HasAttachmentState  || _hasCart) {
 					Equipment.ui.find('.removeOption').show();
 				}
 				else {
-					Equipment.ui.find('.cartitems').hide();
 					Equipment.ui.find('.removeOption').hide();
+				}
+
+				if (_lastState & HasCartState || _hasCart) {
+					Equipment.ui.find('.cartitems').show();
+				}
+				else {
+					Equipment.ui.find('.cartitems').hide();
 				}
 			}
 

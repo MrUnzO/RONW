@@ -501,7 +501,7 @@
 		event.stopImmediatePropagation();
 		if(Mail.ui.find('#zeny_ok').is(':visible'))
 		{
-			ChatBox.addText( DB.getMessage(1110), ChatBox.TYPE.ERROR);
+			ChatBox.addText( DB.getMessage(1110), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
 			return;
 		}
 
@@ -514,7 +514,7 @@
 
 		if(title === "")
 		{
-			ChatBox.addText( DB.getMessage(1106), ChatBox.TYPE.ERROR);
+			ChatBox.addText( DB.getMessage(1106), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
 			return;
 		}
 

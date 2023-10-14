@@ -33,6 +33,7 @@ define(function( require )
 	var KEYS          = require('Controls/KeyEventHandler');
 	var AIDriver      = require('Core/AIDriver');
 	var Altitude 	  = require('Renderer/Map/Altitude');
+	var PACKETVER     = require('Network/PacketVerManager');
 	var PACKET        = require('Network/PacketStructure');
 	var Network       = require('Network/NetworkManager');
 	var Events        = require('Core/Events');
@@ -315,7 +316,8 @@ define(function( require )
 		if (Equipment.ui.is(':visible') &&  data.type === 'item') {
 			ChatBox.addText(
 				DB.getMessage(189),
-				ChatBox.TYPE.ERROR
+				ChatBox.TYPE.ERROR,
+				ChatBox.FILTER.ITEM
 			);
 			return false;
 		}
@@ -383,7 +385,12 @@ define(function( require )
 				
 				// If there is valid cell send move packet
 				if (checkFreeCell(Math.round(target.position[0]), Math.round(target.position[1]), 1, dest)) {
-					var pkt = new PACKET.CZ.REQUEST_MOVE();
+					var pkt;
+					if(PACKETVER.value >= 20180307) {
+						pkt         = new PACKET.CZ.REQUEST_MOVE2();
+					} else {
+						pkt         = new PACKET.CZ.REQUEST_MOVE();
+					}
 					pkt.dest = dest;
 					Network.sendPacket(pkt);
 				}

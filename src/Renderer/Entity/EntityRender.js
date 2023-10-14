@@ -203,7 +203,7 @@ define( function( require )
 		return function renderEntity()
 		{
 			if(this.hideEntity) return;
-			
+
 			// Update shadow
 			SpriteRenderer.shadow = Ground.getShadowFactor( this.position[0], this.position[1] );
 			SpriteRenderer.zIndex = 1;
@@ -330,6 +330,8 @@ define( function( require )
 
 		return function renderElement( entity, files, type, position, is_main )
 		{
+			var isBlendModeOne = false;
+
 			// Nothing to render
 			if (!files.spr || !files.act)
 			{
@@ -418,10 +420,17 @@ define( function( require )
 			   }
 			}
 
+			// Check if special body effect and enable the correct blend mode
+			if (type !== 'shadow' &&
+				entity.getOpt3(StatusConst.Status.BERSERK) ||
+				entity.getOpt3(StatusConst.Status.MARIONETTE)
+			) {
+				isBlendModeOne = true;
+			}
 
 			// Render all frames
 			for (var i=0, count=layers.length; i<count; ++i) {
-				entity.renderLayer( layers[i], spr, pal, files.size, _position, type === 'body' );
+				entity.renderLayer( layers[i], spr, pal, files.size, _position, type, isBlendModeOne);
 			}
 
 			// Save reference
@@ -487,7 +496,7 @@ define( function( require )
 		if(animation.speed){
 			delay = animation.speed;
 		}
-	
+
 		if(type === 'cart' && isIdle){
 			return 0;
 		}
@@ -503,7 +512,7 @@ define( function( require )
 			animCount = Math.floor(animCount / 3);
 			headDir   = entity.headDir;
 		}
-		
+
 		// Don't play, so stop at the current frame.
 		if (animation.play === false) {
 			anim += animCount * headDir; // get rid of doridori
@@ -529,12 +538,12 @@ define( function( require )
 
 		// No repeat
 		anim = Math.min(tick / delay | 0, animCount || animCount -1);  // Avoid an error if animation = 0, search for -1 :(
-		
+
 		anim %= animCount;
 		anim += animCount * headDir // get rid of doridori
 		anim += animation.frame	 // previous frame
 		anim %= animSize;			// avoid overflow
-		
+
 		var lastFrame = animation.frame + animSize-1;
 
 		if (type === 'body' && anim >= lastFrame) {
@@ -557,9 +566,10 @@ define( function( require )
 	 * @param {object} pal palette structure
 	 * @param {float}  sprite size
 	 * @param {Array} pos [x,y] where to render the sprite
-	 * @param {bool} is main body
+	 * @param {string} type
+	 * @param {boolean} isBlendModeOne
 	 */
-	function renderLayer( layer, spr, pal, size, pos, isbody )
+	function renderLayer( layer, spr, pal, size, pos, type, isBlendModeOne )
 	{
 		// If there is nothing to render
 		if (layer.index < 0) {
@@ -594,7 +604,7 @@ define( function( require )
 
 
 		// Get the entity bounding rect
-		if (isbody) {
+		if (type === 'body') {
 			var w = (frame.originalWidth  * layer.scale[0] * size) / 2;
 			var h = (frame.originalHeight * layer.scale[1] * size) / 2;
 
@@ -610,10 +620,17 @@ define( function( require )
 		}
 
 		// copy color
-		SpriteRenderer.color[0] = layer.color[0] * this.effectColor[0];
-		SpriteRenderer.color[1] = layer.color[1] * this.effectColor[1];
-		SpriteRenderer.color[2] = layer.color[2] * this.effectColor[2];
-		SpriteRenderer.color[3] = layer.color[3] * this.effectColor[3];
+		if (type !== 'shadow') {
+			SpriteRenderer.color[0] = layer.color[0] * this.effectColor[0];
+			SpriteRenderer.color[1] = layer.color[1] * this.effectColor[1];
+			SpriteRenderer.color[2] = layer.color[2] * this.effectColor[2];
+			SpriteRenderer.color[3] = layer.color[3] * this.effectColor[3];
+		} else {
+			SpriteRenderer.color[0] = layer.color[0];
+			SpriteRenderer.color[1] = layer.color[1];
+			SpriteRenderer.color[2] = layer.color[2];
+			SpriteRenderer.color[3] = layer.color[3];
+		}
 
 		// apply disapear
 		if (this.remove_tick) {
@@ -631,7 +648,7 @@ define( function( require )
 		SpriteRenderer.image.texture = frame.texture;
 
 		// Draw Sprite
-		SpriteRenderer.render();
+		SpriteRenderer.render(isBlendModeOne);
 	}
 
 

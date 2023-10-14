@@ -223,7 +223,7 @@ define(function( require )
 	}
 
 	var _supportPriority = false;
-	
+
 	/**
 	 * Set reverse priority for entity sorting (for supportive skills)
 	 * @param {boolean} true/false
@@ -231,7 +231,7 @@ define(function( require )
 	function setSupportPicking(v){
 		_supportPriority = v;
 	}
-	
+
 	/**
 	 * Sort entities by z-index and priorities
 	 *
@@ -286,14 +286,14 @@ define(function( require )
 			if((_list[i].objecttype != _list[i].constructor.TYPE_EFFECT && !renderEffects) || (_list[i].objecttype == _list[i].constructor.TYPE_EFFECT && renderEffects)){
 				// Remove from list
 				if (_list[i].remove_tick && _list[i].remove_tick + _list[i].remove_delay < tick) {
-					
+
 					// Remove focus
 					var entityFocus = getFocusEntity();
 					if( entityFocus && entityFocus.GID === _list[i].GID ){
 						entityFocus.onFocusEnd();
 						setFocusEntity(null);
 					}
-					
+
 					_list[i].clean();
 					_list.splice(i, 1);
 					i--;
@@ -364,7 +364,7 @@ define(function( require )
 	function getClosestEntity(sourceEntity, type){
 		var closestEntity = false;
 		var distance = Infinity;
-		
+
 		_list.forEach((entity) => {
 			if( entity.GID !== sourceEntity.GID && entity.objecttype === type && entity.action !== entity.ACTION.DIE && entity.remove_tick === 0 ){
 				var dst = Infinity;
@@ -383,10 +383,10 @@ define(function( require )
 				}
 			}
 		});
-		
+
 		return closestEntity;
 	}
-	
+
 	/**
 	 * Returns the distance between two entities based on direct walkpath
 	 *
@@ -416,7 +416,7 @@ define(function( require )
 		setOverEntity:        setOverEntity,
 		getFocusEntity:       getFocusEntity,
 		setFocusEntity:       setFocusEntity,
-		
+
 		getClosestEntity:     getClosestEntity,
 
 		render:               render,

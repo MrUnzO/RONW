@@ -21,6 +21,8 @@ define(function( require )
 	var Events    = require('Core/Events');
 	var Mouse     = require('Controls/MouseEventHandler');
 	var Session   = require('Engine/SessionStorage');
+	var Targa     = require('Loaders/Targa');
+	var Renderer  = require('Renderer/Renderer');
 	var getModule = require;
 
 
@@ -249,6 +251,40 @@ define(function( require )
 
 		if (this.onAppend) {
 			this.onAppend();
+		}
+		
+		//Fix position after append (screen changed since last time and it loads invalid positions)
+		if (this.ui) {
+			var x, y, width, height, WIDTH, HEIGHT;
+			x      = this.ui.offset().left;
+			y      = this.ui.offset().top;
+			width  = this.ui.width();
+			height = this.ui.height();
+			WIDTH  = Renderer.width;
+			HEIGHT = Renderer.height;
+			
+
+			if (y + height > HEIGHT) {
+				this.ui.css('top', HEIGHT - Math.min(height, HEIGHT));
+			}
+
+			if (x + width > WIDTH) {
+				this.ui.css('left', WIDTH - Math.min(width, WIDTH));
+			}
+
+			//Magnet
+			if(this.magnet.TOP){
+				//nothing to do
+			}
+			if(this.magnet.BOTTOM){
+				this.ui.css('top', HEIGHT - height);
+			}
+			if(this.magnet.LEFT){
+				//nothing to do
+			}
+			if(this.magnet.RIGHT){
+				this.ui.css('left', WIDTH - width);
+			}
 		}
 
 		this.focus();
@@ -482,6 +518,16 @@ define(function( require )
 		if (background) {
 			Client.loadFile( DB.INTERFACE_PATH + background, function(dataURI) {
 				bg_uri = dataURI;
+				if (dataURI instanceof ArrayBuffer) {
+					try {
+						var tga = new Targa();
+						tga.load( new Uint8Array(dataURI) );
+						bg_uri = tga.getDataURL();
+					}
+					catch(e) {
+						console.error( e.message );
+					}
+				}
 				$node.css('backgroundImage', 'url(' + bg_uri + ')');
 			});
 		}

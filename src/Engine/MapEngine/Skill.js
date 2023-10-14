@@ -23,13 +23,13 @@ define(function( require )
 	var Entity            	  = require('Renderer/Entity/Entity');
 	var Session               = require('Engine/SessionStorage');
 	var Network               = require('Network/NetworkManager');
+	var PACKETVER             = require('Network/PacketVerManager');
 	var PACKET                = require('Network/PacketStructure');
 	var EntityManager         = require('Renderer/EntityManager');
 	var EffectManager         = require('Renderer/EffectManager');
 	var Altitude              = require('Renderer/Map/Altitude');
 	var ShortCut              = require('UI/Components/ShortCut/ShortCut');
 	var ChatBox               = require('UI/Components/ChatBox/ChatBox');
-	var SkillWindow           = require('UI/Components/SkillList/SkillList');
 	var SkillTargetSelection  = require('UI/Components/SkillTargetSelection/SkillTargetSelection');
 	var Guild                 = require('UI/Components/Guild/Guild');
 	var SkillListMER          = require('UI/Components/SkillListMER/SkillListMER');
@@ -41,9 +41,16 @@ define(function( require )
 	var NpcMenu               = require('UI/Components/NpcMenu/NpcMenu');
 	var Sense                 = require('UI/Components/Sense/Sense');
 	var Announce              = require('UI/Components/Announce/Announce');
+	var UIVersionManager      = require('UI/UIVersionManager');
 	var Renderer              = require('Renderer/Renderer');
 	var getModule             = require;
 
+	var SkillWindow;
+	if (UIVersionManager.getSkillListVersion() === 0) {
+		SkillWindow = require('UI/Components/SkillListV0/SkillListV0');
+	} else {
+		SkillWindow = require('UI/Components/SkillList/SkillList');
+	}
 
 	/**
 	 * Spam an effect
@@ -81,7 +88,7 @@ define(function( require )
 				effectId: EnumEffect[pkt.effectID],
 				ownerAID: pkt.AID
 			};
-		
+
 			EffectManager.spam( EF_Init_Par );
 		}
 	}
@@ -98,7 +105,7 @@ define(function( require )
 			effectId: pkt.effectID,
 			ownerAID: pkt.AID
 		};
-		
+
 		EffectManager.spam( EF_Init_Par );
 	}
 
@@ -184,7 +191,7 @@ define(function( require )
 		}
 
 		if (error) {
-			ChatBox.addText( DB.getMessage(error), ChatBox.TYPE.ERROR );
+			ChatBox.addText( DB.getMessage(error), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL );
 			srcEntity.setAction(SkillActionTable['DEFAULT']( srcEntity, Renderer.tick ));
 		}
 	}
@@ -219,6 +226,7 @@ define(function( require )
 	 */
 	function onShortCutList( pkt )
 	{
+		if(pkt.tab && pkt.tab > 0) return; // not available yet
 		ShortCut.setList( pkt.ShortCutKey );
 	}
 
@@ -283,7 +291,7 @@ define(function( require )
 
 		switch (pkt.result) {
 			case 0: // success
-				ChatBox.addText( DB.getMessage(491), ChatBox.TYPE.BLUE);
+				ChatBox.addText( DB.getMessage(491), ChatBox.TYPE.BLUE, ChatBox.FILTER.ITEM);
 
 				// Remove old item
 				var item = Inventory.removeItem(pkt.index, 1);
@@ -296,7 +304,7 @@ define(function( require )
 				break;
 
 			case 1: // Fail
-				ChatBox.addText( DB.getMessage(492), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(492), ChatBox.TYPE.ERROR, ChatBox.FILTER.ITEM);
 				break;
 		}
 	}
@@ -368,11 +376,11 @@ define(function( require )
 	{
 		switch (pkt.type) {
 			case 0: //Unable to Teleport in this area
-				ChatBox.addText( DB.getMessage(500), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(500), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL);
 				break;
 
 			case 1: //Saved point cannot be memorized.
-				ChatBox.addText( DB.getMessage(501), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(501), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL);
 				break;
 		}
 	}
@@ -387,15 +395,15 @@ define(function( require )
 	{
 		switch (pkt.errorCode) {
 			case 0: // Saved location as a Memo Point for Warp skill.
-				ChatBox.addText( DB.getMessage(217), ChatBox.TYPE.BLUE);
+				ChatBox.addText( DB.getMessage(217), ChatBox.TYPE.BLUE, ChatBox.FILTER.PUBLIC_LOG);
 				break;
 
 			case 1: // Skill Level is not high enough.
-				ChatBox.addText( DB.getMessage(214), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(214), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL);
 				break;
 
 			case 2: // You haven't learned Warp.
-				ChatBox.addText( DB.getMessage(216), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(216), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL);
 				break;
 		}
 	}
@@ -447,7 +455,7 @@ define(function( require )
 			}
 		};
 	}
-	
+
 	/**
 	 * Get a list of items to repair
 	 *
@@ -465,7 +473,7 @@ define(function( require )
 		RefineWeaponSelection.onIndexSelected = function(index) {
 			if (index >= -1) {
 				const item = RefineWeaponSelection.getItemByIndex(index);
-				
+
 				var pkt   = new PACKET.CZ.REQ_ITEMREPAIR();
 				pkt.index = index;
 				pkt.itemId = item.ITID;
@@ -487,7 +495,12 @@ define(function( require )
 	 */
 	ShortCut.onChange = function onChange( index, isSkill, ID, count )
 	{
-		var pkt                 = new PACKET.CZ.SHORTCUT_KEY_CHANGE();
+		var pkt;
+		if(PACKETVER.value >= 20190522) {
+			pkt = new PACKET.CZ.SHORTCUT_KEY_CHANGE2();
+		} else {
+			pkt = new PACKET.CZ.SHORTCUT_KEY_CHANGE1();
+		}
 		pkt.Index               = index;
 		pkt.ShortCutKey.isSkill = isSkill ? 1 : 0;
 		pkt.ShortCutKey.ID      = ID;
@@ -526,20 +539,20 @@ define(function( require )
 	{
 		var entity, skill, target, pkt, out;
 		var count, range;
-		
+
 		var isHomun = (id > 8000 && id < 8044);
-		
+
 		if (isHomun){
 			entity = EntityManager.get(Session.homunId);
 		} else {
 			entity = Session.Entity;
 		}
-		
+
 		// Client side minimum delay
 		if (entity && entity.amotionTick > Renderer.tick){ // Can't spam skills faster than amotion
 			return;
 		}
-		
+
 		target = EntityManager.get(targetID) || entity;
 		skill  = SkillWindow.getSkillById(id);
 		out    = [];
@@ -576,7 +589,11 @@ define(function( require )
 			}
        	}
 
-        pkt               = new PACKET.CZ.USE_SKILL();
+		if(PACKETVER.value >= 20180307) {
+			pkt               = new PACKET.CZ.USE_SKILL2();
+		} else {
+			pkt               = new PACKET.CZ.USE_SKILL();
+		}
         pkt.SKID          = id;
         pkt.selectedLevel = level;
         pkt.targetID      = targetID || Session.Entity.GID;
@@ -595,7 +612,11 @@ define(function( require )
 			pkt         = new PACKET.CZ.REQUEST_MOVENPC();
 			pkt.GID		= Session.homunId;
 		} else {
-			pkt         = new PACKET.CZ.REQUEST_MOVE();
+			if(PACKETVER.value >= 20180307) {
+				pkt         = new PACKET.CZ.REQUEST_MOVE2();
+			} else {
+				pkt         = new PACKET.CZ.REQUEST_MOVE();
+			}
 		}
 		pkt.dest[0] = out[(count-1)*2 + 0];
 		pkt.dest[1] = out[(count-1)*2 + 1];
@@ -618,18 +639,18 @@ define(function( require )
 		var count, range;
 
 		var isHomun = (id > 8000 && id < 8044);
-		
+
 		if (isHomun){
 			entity = EntityManager.get(Session.homunId);
 		} else {
 			entity = Session.Entity;
 		}
-		
+
 		// Client side minimum delay
 		if (entity && entity.amotionTick > Renderer.tick){ // Can't spam skills faster than amotion
 			return;
 		}
-		
+
 		pos    = entity.position;
 		skill  = SkillWindow.getSkillById(id);
 		out    = [];
@@ -657,7 +678,13 @@ define(function( require )
 			return;
 		}
 
-		pkt               = new PACKET.CZ.USE_SKILL_TOGROUND();
+		if(PACKETVER.value >= 20190904) {
+			pkt               = new PACKET.CZ.USE_SKILL_TOGROUND3();
+		} else if(PACKETVER.value >= 20180307) {
+			pkt               = new PACKET.CZ.USE_SKILL_TOGROUND2();
+		} else {
+			pkt               = new PACKET.CZ.USE_SKILL_TOGROUND();
+		}
 		pkt.SKID          = id;
 		pkt.selectedLevel = level;
 		pkt.xPos          = x;
@@ -672,7 +699,7 @@ define(function( require )
 			Network.sendPacket(pkt);
 			return;
 		}
-		
+
 		// Save the packet
 		Session.moveAction = pkt;
 
@@ -681,7 +708,11 @@ define(function( require )
 			pkt         = new PACKET.CZ.REQUEST_MOVENPC();
 			pkt.GID		= Session.homunId;
 		} else {
-			pkt         = new PACKET.CZ.REQUEST_MOVE();
+			if(PACKETVER.value >= 20180307) {
+				pkt         = new PACKET.CZ.REQUEST_MOVE2();
+			} else {
+				pkt         = new PACKET.CZ.REQUEST_MOVE();
+			}
 		}
 		pkt.dest[0]        = out[(count-1)*2 + 0];
 		pkt.dest[1]        = out[(count-1)*2 + 1];
@@ -690,20 +721,20 @@ define(function( require )
 
 	function onSpiritSphere(pkt){
 		EffectManager.remove( null, pkt.AID,[ 228, 504, 629, 833]);
-		
+
 		if (pkt.num > 0){
 			var entity = EntityManager.get(pkt.AID);
 			if(entity){
 				var isMonk = (entity._job && [15, 4016, 4038, 4070, 4077, 4106].includes(entity._job) ) //Monk classes
 				var isGS = (entity._job && [24, 4215, 4216, 4228, 4229].includes(entity._job) ) //Gunslinger classes
 				var isRG = (entity._job && [4066, 4082, 4083, 4102, 4110].includes(entity._job) ) //Royal Guard
-				
+
 				var EF_Init_Par = {
 					effectId: EffectConst.EF_CHOOKGI,
 					ownerAID: pkt.AID,
 					spiritNum: pkt.num
 				};
-				
+
 				if(isMonk){
 					EF_Init_Par.effectId = EffectConst.EF_CHOOKGI2;
 				} else if (isGS){
@@ -711,7 +742,7 @@ define(function( require )
 				} else if (isRG){
 					EF_Init_Par.effectId = EffectConst.EF_CHOOKGI_N;
 				}
-				
+
 				EffectManager.spam( EF_Init_Par );
 			}
 		}
@@ -726,7 +757,7 @@ define(function( require )
 		message = message.replace('%s', pkt.monsterName);
 		message = message.replace('%d%', percent);
 
-		ChatBox.addText( message, ChatBox.TYPE.ANNOUNCE, color );
+		ChatBox.addText( message, ChatBox.TYPE.ANNOUNCE, ChatBox.FILTER.PUBLIC_LOG, color );
 		Announce.append();
 		Announce.set(message, color);
 	}
@@ -738,9 +769,9 @@ define(function( require )
 		var name =  SkillInfo[ pkt.SKID ].SkillName;
 		message = `[${name}] ${message}`;
 
-		ChatBox.addText( message, ChatBox.TYPE.ANNOUNCE, color );
+		ChatBox.addText( message, ChatBox.TYPE.ANNOUNCE, ChatBox.FILTER.PUBLIC_LOG, color );
 	}
-	
+
 	function onSense(pkt){
 		Sense.append();
 		Sense.setWindow(pkt);
@@ -758,6 +789,7 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.SHORTCUT_KEY_LIST,      onShortCutList );
 		Network.hookPacket( PACKET.ZC.SHORTCUT_KEY_LIST_V2,   onShortCutList );
 		Network.hookPacket( PACKET.ZC.SHORTCUT_KEY_LIST_V3,   onShortCutList );
+		Network.hookPacket( PACKET.ZC.SHORTCUT_KEY_LIST_V4,   onShortCutList );
 		Network.hookPacket( PACKET.ZC.ACK_TOUSESKILL,         onSkillResult );
 		Network.hookPacket( PACKET.ZC.NOTIFY_EFFECT,          onSpecialEffect );
 		Network.hookPacket( PACKET.ZC.NOTIFY_EFFECT2,         onEffect );
@@ -773,6 +805,7 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.MAKINGARROW_LIST,       onMakingarrowList );
 		Network.hookPacket( PACKET.ZC.NOTIFY_WEAPONITEMLIST,  onRefineList );
 		Network.hookPacket( PACKET.ZC.REPAIRITEMLIST,         onRepairList);
+		Network.hookPacket( PACKET.ZC.REPAIRITEMLIST2,        onRepairList);
 		Network.hookPacket( PACKET.ZC.SPIRITS,                onSpiritSphere );
 		Network.hookPacket( PACKET.ZC.SPIRITS2,               onSpiritSphere );
 		Network.hookPacket( PACKET.ZC.MILLENNIUMSHIELD,       onSpiritSphere );

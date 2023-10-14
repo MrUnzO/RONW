@@ -19,13 +19,19 @@ define(function( require )
 	var DB            = require('DB/DBManager');
 	var Session       = require('Engine/SessionStorage');
 	var Network       = require('Network/NetworkManager');
-	var PACKET        = require('Network/PacketStructure');
 	var PACKETVER  	  = require('Network/PacketVerManager');
+	var PACKETVER        = require('Network/PacketVerManager');
+	var PACKET        = require('Network/PacketStructure');
 	var EntityManager = require('Renderer/EntityManager');
 	var MapRenderer   = require('Renderer/MapRenderer');
 	var UIManager     = require('UI/UIManager');
 	var ChatBox       = require('UI/Components/ChatBox/ChatBox');
-	var MiniMap       = require('UI/Components/MiniMap/MiniMap');
+	var MiniMap;
+	if(PACKETVER.value >= 20180124) {
+		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
+	} else {
+		MiniMap          = require('UI/Components/MiniMap/MiniMap');
+	}
 	var PartyUI       = require('UI/Components/PartyFriends/PartyFriends');
 
 	/**
@@ -55,11 +61,8 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.PARTY_JOIN_REQ,            onPartyInvitationRequest );
 		Network.hookPacket( PACKET.ZC.PARTY_JOIN_REQ_ACK,        onPartyInvitationAnswer );
 		Network.hookPacket( PACKET.ZC.ACK_REQ_JOIN_GROUP,        onPartyInvitationAnswer );
-		if (PACKETVER.value < 20170502) {
-			Network.hookPacket( PACKET.ZC.GROUP_LIST,                onPartyList );
-		} else {
-			Network.hookPacket( PACKET.ZC.GROUP_LIST2,               onPartyList );
-		}
+		Network.hookPacket( PACKET.ZC.GROUP_LIST,                onPartyList );
+		Network.hookPacket( PACKET.ZC.GROUP_LIST2,               onPartyList );
 		Network.hookPacket( PACKET.ZC.GROUP_LIST3,               onPartyList );
 		Network.hookPacket( PACKET.ZC.ADD_MEMBER_TO_GROUP,       onPartyMemberJoin );
 		Network.hookPacket( PACKET.ZC.ADD_MEMBER_TO_GROUP2,      onPartyMemberJoin );
@@ -67,6 +70,7 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.ADD_MEMBER_TO_GROUP4,      onPartyMemberJoin );
 		Network.hookPacket( PACKET.ZC.DELETE_MEMBER_FROM_GROUP,  onPartyMemberLeave );
 		Network.hookPacket( PACKET.ZC.ACK_MAKE_GROUP,            onPartyCreate );
+		Network.hookPacket( PACKET.ZC.GROUP_ISALIVE,             onPartyIsAlive );
 
 		PartyUI.onExpelMember          = GroupEngine.onRequestExpel;
 		PartyUI.onRequestChangeLeader  = GroupEngine.onRequestChangeLeader;
@@ -130,7 +134,7 @@ define(function( require )
 			return;
 		}
 
-		ChatBox.addText( pseudo + ' ' + DB.getMessage(2059, ' has recieved an invitation to join your party.'), ChatBox.TYPE.BLUE);
+		ChatBox.addText( pseudo + ' ' + DB.getMessage(2059, ' has recieved an invitation to join your party.'), ChatBox.TYPE.BLUE, ChatBox.FILTER.PARTY_SETUP);
 		
 		if(PACKETVER.value >= 20130529 && PACKETVER.value < 20180307) {
 			var pkt = new PACKET.CZ.PARTY_JOIN_REQ();
@@ -226,7 +230,7 @@ define(function( require )
 	{
 		switch (pkt.result) {
 			case 0: // Ok, process
-				ChatBox.addText( DB.getMessage(77), ChatBox.TYPE.BLUE);
+				ChatBox.addText( DB.getMessage(77), ChatBox.TYPE.BLUE, ChatBox.FILTER.PARTY_SETUP);
 				Session.hasParty = true;
 
 				PartyUI.setParty( _partyName, [{
@@ -239,20 +243,28 @@ define(function( require )
 				break;
 
 			case 1: // party name already exists
-				ChatBox.addText( DB.getMessage(78), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(78), ChatBox.TYPE.ERROR, ChatBox.FILTER.PARTY_SETUP);
 				break;
 
 			case 1: // already in a party
-				ChatBox.addText( DB.getMessage(79), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(79), ChatBox.TYPE.ERROR, ChatBox.FILTER.PARTY_SETUP);
 				break;
 
 			case 3: // cannot organize parties on this map
-				ChatBox.addText( DB.getMessage(1387), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(1387), ChatBox.TYPE.ERROR, ChatBox.FILTER.PARTY_SETUP);
 				break;
 		}
 	}
 
-
+	/**
+	 * Get answer from party creation
+	 *
+	 * @param {object} pkt - PACKET.ZC.GROUP_ISALIVE
+	 */
+	function onPartyIsAlive( pkt )
+	{
+		// TODO: save is pkt.isDead, in new Party UI this show dead icon
+	}
 	/**
 	 * Get list of party members
 	 *
@@ -290,6 +302,7 @@ define(function( require )
 			pkt.life = entity.life;
 		}
 
+		PartyUI.setOptions(pkt.expOption, pkt.ItemPickupRule, pkt.ItemDivisionRule);
 		PartyUI.addPartyMember(pkt);
 	}
 
@@ -308,12 +321,12 @@ define(function( require )
 
 			case 2:
 				// Cannot leave a party in this map
-				ChatBox.addText( DB.getMessage(1872), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(1872), ChatBox.TYPE.ERROR, ChatBox.FILTER.PARTY_SETUP);
 				return;
 
 			case 3:
 				// Cannot withdraw/break the party in this map
-				ChatBox.addText( DB.getMessage(1873), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(1873), ChatBox.TYPE.ERROR, ChatBox.FILTER.PARTY_SETUP);
 				return;
 		}
 
@@ -359,7 +372,7 @@ define(function( require )
 			entity.dialog.set( pkt.msg );
 		}
 
-		ChatBox.addText( pkt.msg, ChatBox.TYPE.PARTY );
+		ChatBox.addText( pkt.msg, ChatBox.TYPE.PARTY, ChatBox.FILTER.PARTY );
 	}
 
 
@@ -389,9 +402,13 @@ define(function( require )
 	{
 		PartyUI.setOptions(pkt.expOption, pkt.ItemPickupRule, pkt.ItemDivisionRule);
 
-		ChatBox.addText( DB.getMessage(291) + '  - ' + DB.getMessage(292) + '  : ' + DB.getMessage(287 + pkt.expOption ), ChatBox.TYPE.INFO );
-		ChatBox.addText( DB.getMessage(291) + '  - ' + DB.getMessage(293) + '  : ' + DB.getMessage(289 + pkt.ItemPickupRule), ChatBox.TYPE.INFO );
-		ChatBox.addText( DB.getMessage(291) + '  - ' + DB.getMessage(738) + '  : ' + DB.getMessage(287 + pkt.ItemDivisionRule), ChatBox.TYPE.INFO );
+		ChatBox.addText( DB.getMessage(291) + '  - ' + DB.getMessage(292) + '  : ' + DB.getMessage(287 + pkt.expOption ), ChatBox.TYPE.PRIVATE, ChatBox.FILTER.PARTY_SETUP );
+
+		// Some packets don't have ItemPickupRule and ItemDivisionRule so we need to check if they exist
+		if (pkt.ItemPickupRule !== undefined)
+			ChatBox.addText( DB.getMessage(291) + '  - ' + DB.getMessage(293) + '  : ' + DB.getMessage(289 + pkt.ItemPickupRule), ChatBox.TYPE.PRIVATE, ChatBox.FILTER.PARTY_SETUP );
+		if (pkt.ItemDivisionRule !== undefined)
+			ChatBox.addText( DB.getMessage(291) + '  - ' + DB.getMessage(738) + '  : ' + DB.getMessage(287 + pkt.ItemDivisionRule), ChatBox.TYPE.PRIVATE, ChatBox.FILTER.PARTY_SETUP );
 	}
 
 
@@ -402,7 +419,7 @@ define(function( require )
 	 */
 	function onPartyConfig( pkt )
 	{
-		ChatBox.addText( DB.getMessage(pkt.bRefuseJoinMsg ? 1325 : 1326), ChatBox.TYPE.INFO );
+		ChatBox.addText( DB.getMessage(pkt.bRefuseJoinMsg ? 1325 : 1326), ChatBox.TYPE.INFO, ChatBox.FILTER.PARTY_SETUP );
 	}
 
 
@@ -455,7 +472,7 @@ define(function( require )
 			case 9: id = 1871; break;
 		}
 
-		ChatBox.addText( DB.getMessage(id).replace('%s', pkt.characterName), color);
+		ChatBox.addText( DB.getMessage(id).replace('%s', pkt.characterName), color, ChatBox.FILTER.PARTY_SETUP);
 	}
 
 

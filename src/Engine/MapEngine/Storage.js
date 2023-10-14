@@ -16,6 +16,7 @@ define(function( require )
 	 */
 	var jQuery        = require('Utils/jquery');
 	var Network       = require('Network/NetworkManager');
+	var PACKETVER   = require('Network/PacketVerManager');
 	var PACKET        = require('Network/PacketStructure');
 	var Storage       = require('UI/Components/Storage/Storage');
 
@@ -35,7 +36,9 @@ define(function( require )
 	 */
 	function onStorageInfo( pkt )
 	{
-		Storage.append();
+		if(!(Storage.__loaded && Storage.__active)) { 
+			Storage.append();
+		}
 		Storage.setItemInfo( pkt.curCount, pkt.maxCount );
 		Storage.setItems( itemBuffer );
 
@@ -110,7 +113,12 @@ define(function( require )
 			return;
 		}
 
-		var pkt   = new PACKET.CZ.MOVE_ITEM_FROM_BODY_TO_STORE();
+		var pkt;
+		if(PACKETVER.value >= 20180307) {
+			pkt   = new PACKET.CZ.MOVE_ITEM_FROM_BODY_TO_STORE2();
+		} else {
+			pkt   = new PACKET.CZ.MOVE_ITEM_FROM_BODY_TO_STORE();
+		}
 		pkt.index = index;
 		pkt.count = count;
 		Network.sendPacket( pkt );
@@ -140,7 +148,12 @@ define(function( require )
 			return;
 		}
 
-		var pkt   = new PACKET.CZ.MOVE_ITEM_FROM_STORE_TO_BODY();
+		var pkt;
+		if(PACKETVER.value >= 20180307) {
+			pkt   = new PACKET.CZ.MOVE_ITEM_FROM_STORE_TO_BODY2();
+		} else {
+			pkt   = new PACKET.CZ.MOVE_ITEM_FROM_STORE_TO_BODY();
+		}
 		pkt.index = index;
 		pkt.count = count;
 		Network.sendPacket( pkt );
@@ -177,6 +190,7 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.ADD_ITEM_TO_STORE,          onStorageItemAdded );
 		Network.hookPacket( PACKET.ZC.ADD_ITEM_TO_STORE2,         onStorageItemAdded );
 		Network.hookPacket( PACKET.ZC.ADD_ITEM_TO_STORE3,         onStorageItemAdded );
+		Network.hookPacket( PACKET.ZC.ADD_ITEM_TO_STORE4,         onStorageItemAdded );
 		Network.hookPacket( PACKET.ZC.CLOSE_STORE,                onStorageClose );
 		Network.hookPacket( PACKET.ZC.DELETE_ITEM_FROM_STORE,     onStorageItemRemoved );
 	};

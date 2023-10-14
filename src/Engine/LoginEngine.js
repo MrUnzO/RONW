@@ -24,14 +24,19 @@ define(function( require )
 	var Session      = require('Engine/SessionStorage');
 	var CharEngine   = require('Engine/CharEngine');
 	var Network      = require('Network/NetworkManager');
-	var PACKET       = require('Network/PacketStructure');
 	var PACKETVER    = require('Network/PacketVerManager');
+	var PACKET       = require('Network/PacketStructure');
 	var Renderer     = require('Renderer/Renderer');
 	var UIManager    = require('UI/UIManager');
 	var WinList      = require('UI/Components/WinList/WinList');
 	var WinPopup     = require('UI/Components/WinPopup/WinPopup');
-	var WinLogin     = require('UI/Components/WinLogin/WinLogin');
 	var MD5          = require('Vendors/spark-md5.min');
+	var WinLogin;
+	if(PACKETVER.value >= 20181114) {
+		WinLogin = require('UI/Components/WinLoginV2/WinLoginV2');
+	} else {
+		WinLogin = require('UI/Components/WinLogin/WinLogin');
+	}
 	var getModule    = require;
 
 

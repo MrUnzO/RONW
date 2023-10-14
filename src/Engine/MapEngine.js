@@ -25,6 +25,7 @@ define(function( require )
 	var Events           = require('Core/Events');
 	var Session          = require('Engine/SessionStorage');
 	var Network          = require('Network/NetworkManager');
+	var PACKETVER        = require('Network/PacketVerManager');
 	var PACKET           = require('Network/PacketStructure');
 	var Renderer         = require('Renderer/Renderer');
 	var Camera           = require('Renderer/Camera');
@@ -39,8 +40,34 @@ define(function( require )
 	var Background       = require('UI/Background');
 	var Escape           = require('UI/Components/Escape/Escape');
 	var ChatBox          = require('UI/Components/ChatBox/ChatBox');
-	var MiniMap          = require('UI/Components/MiniMap/MiniMap');
-	var BasicInfo        = require('UI/Components/BasicInfo/BasicInfo');
+	var ChatBoxSettings  = require('UI/Components/ChatBoxSettings/ChatBoxSettings');
+
+	var MiniMap;
+	if(PACKETVER.value >= 20180124) {
+		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
+	} else {
+		MiniMap          = require('UI/Components/MiniMap/MiniMap');
+	}
+
+	var UIVersionManager      = require('UI/UIVersionManager');
+
+	var BasicInfo;
+	if (UIVersionManager.getBasicInfoVersion() === 0) {
+		BasicInfo = require('UI/Components/BasicInfoV0/BasicInfoV0');
+	} else if (UIVersionManager.getBasicInfoVersion() === 3) {
+		BasicInfo = require('UI/Components/BasicInfoV3/BasicInfoV3');
+	} else if (UIVersionManager.getBasicInfoVersion() === 4) {
+		BasicInfo = require('UI/Components/BasicInfoV4/BasicInfoV4');
+	} else {
+		BasicInfo = require('UI/Components/BasicInfo/BasicInfo');
+	}
+	var SkillList;
+	if (UIVersionManager.getSkillListVersion() === 0) {
+		SkillList = require('UI/Components/SkillListV0/SkillListV0');
+	} else {
+		SkillList = require('UI/Components/SkillList/SkillList');
+	}
+
 	var WinStats         = require('UI/Components/WinStats/WinStats');
 	var Inventory        = require('UI/Components/Inventory/Inventory');
 	var CartItems        = require('UI/Components/CartItems/CartItems');
@@ -52,7 +79,6 @@ define(function( require )
 	var StatusIcons      = require('UI/Components/StatusIcons/StatusIcons');
 	var ChatRoomCreate   = require('UI/Components/ChatRoomCreate/ChatRoomCreate');
 	var Emoticons        = require('UI/Components/Emoticons/Emoticons');
-	var SkillList        = require('UI/Components/SkillList/SkillList');
 	var FPS              = require('UI/Components/FPS/FPS');
 	var PartyFriends     = require('UI/Components/PartyFriends/PartyFriends');
 	var Guild            = require('UI/Components/Guild/Guild');
@@ -60,6 +86,14 @@ define(function( require )
 	var SkillListMER     = require('UI/Components/SkillListMER/SkillListMER');
 	var MobileUI         = require('UI/Components/MobileUI/MobileUI');
 	var CashShop         = require('UI/Components/CashShop/CashShop');
+	var Bank             = require('UI/Components/Bank/Bank');
+	if(Configs.get('enableMapName')){
+		var MapName          = require('UI/Components/MapName/MapName');
+	}
+	if(PACKETVER.value >= 20180307) {
+		var Quest            = require('UI/Components/Quest/Quest');
+		var QuestWindow      = require('UI/Components/Quest/QuestWindow');
+	}
 	var PluginManager    = require('Plugins/PluginManager');
 
 	/**
@@ -106,7 +140,12 @@ define(function( require )
 			}
 
 			// Success, try to login.
-			var pkt        = new PACKET.CZ.ENTER();
+			var pkt;
+			if(PACKETVER.value >= 20180307) {
+				pkt        = new PACKET.CZ.ENTER2();
+			} else {
+				pkt        = new PACKET.CZ.ENTER();
+			}
 			pkt.AID        = Session.AID;
 			pkt.GID        = Session.GID;
 			pkt.AuthCode   = Session.AuthCode;
@@ -126,7 +165,12 @@ define(function( require )
 			var is_sec_hbt = Configs.get('sec_HBT', null);
 
 			// Ping
-			var ping = new PACKET.CZ.REQUEST_TIME();
+			var ping;
+			if(PACKETVER.value >= 20180307) {
+				ping = new PACKET.CZ.REQUEST_TIME2();
+			} else {
+				ping = new PACKET.CZ.REQUEST_TIME();
+			}
 			var startTick = Date.now();
 			Network.setPing(function(){
 			if(is_sec_hbt)Network.sendPacket(hbt);
@@ -180,9 +224,16 @@ define(function( require )
 		require('./MapEngine/Store').call();
 		require('./MapEngine/Trade').call();
 		require('./MapEngine/Friends').init();
-		
+		if(PACKETVER.value >= 20180307) {
+			require('./MapEngine/Quest').call();
+		}
+
 		if(Configs.get('enableCashShop')){
 			require('./MapEngine/CashShop').call();
+		}
+
+		if(Configs.get('enableBank')) {
+			require('./MapEngine/Bank').init();
 		}
 
 		// Prepare UI
@@ -203,14 +254,28 @@ define(function( require )
 		StatusIcons.prepare();
 		BasicInfo.prepare();
 		ChatBox.prepare();
+		ChatBoxSettings.prepare();
 		Guild.prepare();
 		WorldMap.prepare();
 		SkillListMER.prepare();
-		
+		if (UIVersionManager.getWinStatsVersion() === 0) {
+			WinStats.prepare();
+		}
+		if(Configs.get('enableMapName')){
+			MapName.prepare();
+		}
+		if(PACKETVER.value >= 20180307) {
+			Quest.prepare();
+			QuestWindow.prepare();
+		}
+
 		if(Configs.get('enableCashShop')){
 			CashShop.prepare();
 		}
-		
+
+		if(Configs.get('enableBank')) {
+			Bank.prepare();
+		}
 
 		// Bind UI
 		WinStats.onRequestUpdate        = onRequestStatUpdate;
@@ -271,7 +336,7 @@ define(function( require )
 		Session.guildRight    =     0;
 
 		Session.homunId       =     0;
-		
+
 		Session.Entity.clevel = Session.Character.level;
 
 		BasicInfo.update('blvl', Session.Character.level );
@@ -303,7 +368,12 @@ define(function( require )
 			// TODO: find a better place to put it
 			jQuery(window).on('keydown.map', function( event ){
 				if (event.which === KEYS.INSERT) {
-					var pkt = new PACKET.CZ.REQUEST_ACT();
+					var pkt;
+					if(PACKETVER.value >= 20180307) {
+						pkt        = new PACKET.CZ.REQUEST_ACT2();
+					} else {
+						pkt        = new PACKET.CZ.REQUEST_ACT();
+					}
 					pkt.action = Session.Entity.action === Session.Entity.ACTION.SIT ? 3 : 2;
 					Network.sendPacket(pkt);
 					event.stopImmediatePropagation();
@@ -316,6 +386,7 @@ define(function( require )
 				GID: Session.Character.GID
 			});
 			EntityManager.add( Session.Entity );
+			Session.Entity.aura.free(); // free aura so it loads in new map
 
 			// Initialize camera
 			Camera.setTarget( Session.Entity );
@@ -324,7 +395,12 @@ define(function( require )
 			// Add Game UI
 			MiniMap.append();
 			MiniMap.setMap( MapRenderer.currentMap );
+			if(Configs.get('enableMapName')){
+				MapName.setMap( MapRenderer.currentMap );
+				MapName.append();
+			}
 			ChatBox.append();
+			ChatBoxSettings.append();
 			BasicInfo.append();
 			Escape.append();
 			Inventory.append();
@@ -344,11 +420,18 @@ define(function( require )
 			WorldMap.append();
 			SkillListMER.append();
 			MobileUI.append();
-			
+			if (UIVersionManager.getWinStatsVersion() === 0) {
+				WinStats.append();
+			}
+			if(PACKETVER.value >= 20180307) {
+				Quest.append();
+				QuestWindow.append();
+			}
+
 			if(Configs.get('enableCashShop')){
 				CashShop.append();
 			}
-			
+
 			// Reload plugins
 			PluginManager.init();
 
@@ -404,7 +487,7 @@ define(function( require )
 	 */
 	function onExitFail( pkt )
 	{
-		ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR);
+		ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
 	}
 
 
@@ -473,12 +556,16 @@ define(function( require )
 	{
 		if (!pkt.type) {
 			// Have to wait 10sec
-			ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR );
+			ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
 		}
 		else {
+			BasicInfo.remove();
 			StatusIcons.clean();
 			ChatBox.clean();
 			ShortCut.clean();
+			if(PACKETVER.value >= 20180307) {
+				Quest.clean();
+			}
 			PartyFriends.clean();
 			MapRenderer.free();
 			Renderer.stop();
@@ -496,9 +583,11 @@ define(function( require )
 		switch (pkt.result) {
 			// Disconnect
 			case 0:
+				BasicInfo.remove();
 				StatusIcons.clean();
 				ChatBox.clean();
 				ShortCut.clean();
+				Quest.clean();
 				PartyFriends.clean();
 				Renderer.stop();
 				onExitSuccess();
@@ -506,7 +595,7 @@ define(function( require )
 
 			case 1:
 				// Have to wait 10 sec
-				ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR);
+				ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
 				break;
 
 			default:
@@ -617,7 +706,12 @@ define(function( require )
 		if (Session.Entity.action === Session.Entity.ACTION.SIT || KEYS.SHIFT) {
 			Session.Entity.lookTo( Mouse.world.x, Mouse.world.y );
 
-			var pkt     = new PACKET.CZ.CHANGE_DIRECTION();
+			var pkt;
+			if(PACKETVER.value >= 20180307) {
+				pkt = new PACKET.CZ.CHANGE_DIRECTION2();
+			} else {
+				pkt = new PACKET.CZ.CHANGE_DIRECTION();
+			}
 			pkt.headDir = Session.Entity.headDir;
 			pkt.dir     = Session.Entity.direction;
 			Network.sendPacket(pkt);
@@ -653,8 +747,12 @@ define(function( require )
 		                    Math.round(Session.Entity.position[1]) === Mouse.world.y);
 
 		if (isWalkable && !isCurrentPos) {
-			var pkt = new PACKET.CZ.REQUEST_MOVE();
-
+			var pkt;
+			if(PACKETVER.value >= 20180307) {
+				pkt         = new PACKET.CZ.REQUEST_MOVE2();
+			} else {
+				pkt         = new PACKET.CZ.REQUEST_MOVE();
+			}
 			if (!checkFreeCell(Mouse.world.x, Mouse.world.y, 1, pkt.dest)) {
 				pkt.dest[0] = Mouse.world.x;
 				pkt.dest[1] = Mouse.world.y;
@@ -778,7 +876,11 @@ define(function( require )
 	function onDropItem( index, count )
 	{
 		if (count) {
-			var pkt   = new PACKET.CZ.ITEM_THROW();
+			if(PACKETVER.value >= 20180307) {
+				var pkt   = new PACKET.CZ.ITEM_THROW2();
+			} else {
+				var pkt   = new PACKET.CZ.ITEM_THROW();
+			}
 			pkt.Index = index;
 			pkt.count = count;
 			Network.sendPacket(pkt);
@@ -793,7 +895,12 @@ define(function( require )
 	 */
 	function onUseItem( index )
 	{
-		var pkt   = new PACKET.CZ.USE_ITEM();
+		var pkt;
+		if(PACKETVER.value >= 20180307) { // not sure - this date is when the shuffle packets stoped
+			pkt = new PACKET.CZ.USE_ITEM2();
+		} else {
+			pkt = new PACKET.CZ.USE_ITEM();
+		}
 		pkt.index = index;
 		pkt.AID   = Session.Entity.GID;
 		Network.sendPacket(pkt);
