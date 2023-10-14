@@ -304,7 +304,7 @@ define(function(require)
 
     /**
      * Result of Request in Deleting the Character
-     * 
+     *
      * @param {object} pkt - packet structure
      */
     CharSelectV3.reqdeleteAnswer = function ReqDelAnswer ( pkt )
@@ -333,12 +333,12 @@ define(function(require)
             case 5: // 5: To delete a character you must withdraw from the party.
                 UIManager.showMessageBox( DB.getMessage(1819), 'ok' );
                 break;
-            
+
             default:
                 return;
         }
     }
-    
+
     /**
      * When successfully requested for character deletion
      * Update UI and add timer
@@ -370,7 +370,7 @@ define(function(require)
     function removedelete ()
     {
         if (_slots[_index]) {
-            
+
             // Delete here as well? Though server should tell us this
             _slots[_index].DeleteDate = 0;
 
@@ -471,13 +471,13 @@ define(function(require)
 
         _list.push( character );
         _slots[ character.CharNum ] = character;
-        
+
         _entitySlots[ character.CharNum ] = new Entity();
         _entitySlots[ character.CharNum ].set( character );
         _entitySlots[ character.CharNum ].hideShadow = true;
         updateCharSlot();
     };
-    
+
 
 
     /**
@@ -584,7 +584,7 @@ define(function(require)
 
         var slotIndex = _index = index > _maxSlots ? _maxSlots : (index < 0 ? 0: index);
 
-        
+
         // Not found, just clean up.
         entity = _slots[_index];
         if (!entity) {
@@ -623,7 +623,7 @@ define(function(require)
         }
 
         ui.find('.ok').show();
-        
+
         Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot_select.bmp", function(dataURI) {
             ui.find('#slot'+ slotIndex).css('backgroundImage', 'url(' + dataURI + ')');
         });
@@ -687,9 +687,9 @@ define(function(require)
                 Client.loadFile( DB.INTERFACE_PATH + "select_character_ver3/img_slot_normal.bmp", function(dataURI) {
                     CharSelectV3.ui.find('#slot'+ i).css('backgroundImage', 'url(' + dataURI + ')');
                 });
-                
+
                 const slotJobIcon = jQuery(CharSelectV3.ui.find(".job_icon")[i]);
-                
+
                 Client.loadFile( DB.INTERFACE_PATH + "renewalparty/icon_jobs_"+_slots[i].job+".bmp", function(dataURI) {
                     slotJobIcon.css('backgroundImage', 'url(' + dataURI + ')');
                 });
@@ -703,12 +703,6 @@ define(function(require)
                         countdown.style.display = "block";
                     }
                 }
-            }else{
-                CharSelectV3.ui.find('#slot'+ i).css("background-image", "");
-                const slotJobIcon = jQuery(CharSelectV3.ui.find(".job_icon")[i]);
-                Client.loadFile( DB.INTERFACE_PATH + "renewalparty/icon_jobs_"+_slots[i].job+".bmp", function(dataURI) {
-                    slotJobIcon.css('backgroundImage', 'url(' + dataURI + ')');
-                });
             }
         }
     }

@@ -12,11 +12,16 @@ const ROConfig = {
             port: 6900,
             // version: 55,
             // langtype: 5,
-            packetver: 20180704,
+            packetver: 20180620,
             packetKeys: true
         },
     ],
     version: require('package.json').version,
+	renewal:     true,
+	clientVersionMode: "PacketVer",
+	enableCashShop: false,
+	enableBank: false,
+	enableMapName: false,
     plugins: {},
 };
 /**************************************************************/

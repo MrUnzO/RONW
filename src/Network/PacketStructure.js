@@ -12402,7 +12402,7 @@ define(['Utils/BinaryWriter', './PacketVerManager', 'Utils/Struct'], function (B
 		for (var i = 0; i < 64; ++i) {
 				var c = fp.readChar();
 			}
-	
+
 			return false;
 	};
 	PACKET.ZC.ACH_UPDATE.size = 66;
@@ -12488,7 +12488,7 @@ define(['Utils/BinaryWriter', './PacketVerManager', 'Utils/Struct'], function (B
 	PACKET.CH.MAKE_CHAR3.prototype.build = function() {
 		var pkt_len = 2 + 24 + 1 + 2 + 2 + 2 + 2 + 1; // Total 36 bytes
 		var pkt_buf = new BinaryWriter(pkt_len);
-		
+
 		pkt_buf.writeShort(0xa39);
 		pkt_buf.writeString(this.name, 24);
 		pkt_buf.writeUChar(this.CharNum);
@@ -12499,7 +12499,7 @@ define(['Utils/BinaryWriter', './PacketVerManager', 'Utils/Struct'], function (B
 		pkt_buf.writeUChar(0);
 		pkt_buf.writeUChar(0);
 		pkt_buf.writeUChar(this.Sex);
-		
+
 		return pkt_buf;
 	};
 
@@ -12613,7 +12613,7 @@ define(['Utils/BinaryWriter', './PacketVerManager', 'Utils/Struct'], function (B
 		pkt_buf.writeShort(this.index);
 		return pkt_buf;
 	};
-	
+
 	//0x0aa2
 	PACKET.ZC.REFINING_MATERIAL_LIST = function PACKET_ZC_REFINING_MATERIAL_LIST(fp, end) {
 		this.itemIndex = fp.readShort();
@@ -12627,13 +12627,13 @@ define(['Utils/BinaryWriter', './PacketVerManager', 'Utils/Struct'], function (B
 				}else{
 					out[i].itemId = fp.readUShort();
 				}
-				
+
 				out[i].chance = fp.readChar();
 				out[i].zeny = fp.readULong();
 			}
 			return out;
 		})();
-		
+
 	};
 	PACKET.ZC.REFINING_MATERIAL_LIST.size = -1;
 
@@ -12846,7 +12846,7 @@ define(['Utils/BinaryWriter', './PacketVerManager', 'Utils/Struct'], function (B
 		this.PName = fp.readString(24);
 	};
 	PACKET.ZC.ACK_REQNAMEALL3.size = 58;
-	
+
 	//0xade
 	PACKET.ZC.WEIGHT_LIMIT = function PACKET_ZC_WEIGHT_LIMIT(fp, end) {
 		this.weight_rate = fp.readULong();
