@@ -1,17 +1,17 @@
 /*************************** Config ***************************/
 const ROConfig = {
     development: true, // don't need to compile javascript files in chrome app since it's already a package.
-    grfList: ['data.grf','rdata.grf'],
+    grfList: ['data.grf'],
     readDataFolder: true,
-    rootFolder: "G:/Private Servers/Ragnarok/roBrowser/ROData2018/",
+    rootFolder: "G:/Private Server/Ragnarok/Clients/2018/",
     servers: [
         {
             display: 'Localhost Server',
             desc: "roBrowser's demo server",
             address: '127.0.0.1',
             port: 6900,
-            version: 55,
-            langtype: 5,
+            // version: 55,
+            // langtype: 5,
             packetver: 20180704,
             packetKeys: true
         },
