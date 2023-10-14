@@ -524,18 +524,6 @@ define(function( require )
 					animSpeed = pkt.attackMT / m_attackMotion;
 				}
 
-				// Display throw arrow effect when using bows, not an elegant conditional but it works.. [Waken]
-				if (weaponSound && weaponSound.includes('bow')) {
-					var EF_Init_Par = {
-						effectId: 'ef_arrow_projectile',
-						ownerAID: dstEntity.GID,
-						otherAID: srcEntity.GID,
-						otherPosition: srcEntity.position
-					};
-
-					EffectManager.spam( EF_Init_Par );
-				}
-
 				//attack sound
 				if(weaponSound){
 					Events.setTimeout(function(){
