@@ -61,7 +61,7 @@ define(function(require)
 	 */
 	ItemObtain.init = function init()
 	{
-		this.ui.css('zIndex', 45); // Between Interface and Game Announce
+		// this.ui.css('zIndex', 45); // Between Interface and Game Announce
 	};
 
 
@@ -103,8 +103,10 @@ define(function(require)
 	ItemObtain.set = function set( item )
 	{
 		var it       = DB.getItemInfo(item.ITID);
-		var display  = DB.getItemName(item);
+		var display  = DB.getItemName(item, {showItemSlots: false , showItemOptions: false});
 		var resource = item.IsIdentified ? it.identifiedResourceName : it.unidentifiedResourceName;
+
+		this.placeOnTop();
 
 		this.ui.find('.content').html(
 			'<img src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="'+ item.ITID +'" width="24" height="24" /> ' +

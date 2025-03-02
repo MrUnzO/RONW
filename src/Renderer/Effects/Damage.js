@@ -16,6 +16,7 @@ define(function( require )
 	// Load dependencies
 	var WebGL          = require('Utils/WebGL');
 	var Client         = require('Core/Client');
+	var Configs        = require('Core/Configs');
 	var Sprite         = require('Loaders/Sprite');
 	var Renderer       = require('Renderer/Renderer');
 	var SpriteRenderer = require('Renderer/SpriteRenderer');
@@ -62,10 +63,13 @@ define(function( require )
 	};
 
 
+	// Damage suffix status
+	var _enableSuffix = false;
+
 	/**
 	 * @var {string} Sprite of the damage sprite
 	 */
-	var _numbers = new Array(10);
+	var _numbers;
 	var _msgNames = {
 		0: 'miss',
 		1: 'guard',
@@ -83,6 +87,10 @@ define(function( require )
 	 */
 	var _list = [];
 
+	/**
+	 * @var previus combo time
+	 */
+	var prevCombo = [];
 
 	/**
 	 * Convert sprite to image Data
@@ -90,10 +98,21 @@ define(function( require )
 	 */
 	Damage.init = function init( gl )
 	{
+		var confChange = !(_enableSuffix === Configs.get('enableDmgSuffix'));
+		
+		_enableSuffix = Configs.get('enableDmgSuffix');
+
 		// Already loaded
-		if (_numbers[0] && _msg.miss && _msgBlue.miss) {
-			return;
+		if (_numbers && _numbers[0] && _msg.miss && _msgBlue.miss) {
+			if(confChange){
+				// Remove old file, need to get different version of the sprite
+				MemoryManager.remove(gl, 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/msg.spr');
+			} else {
+				return;
+			}
 		}
+		
+		_numbers = new Array(_enableSuffix ? 12 : 10);
 
 		Client.getFiles([
 			'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xfd\xc0\xda.spr',
@@ -103,7 +122,7 @@ define(function( require )
 			var sprNumbers, sprMsg, sprBlue;
 
 			// Load it properly later using webgl
-			MemoryManager.remove(null, 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/msg.spr');
+			MemoryManager.remove(gl, 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/msg.spr');
 
 			try {
 				sprNumbers = new Sprite(numbers);
@@ -116,7 +135,7 @@ define(function( require )
 			}
 
 			// Create SpriteSheet
-			for (var i = 0; i < 10; ++i) {
+			for (var i = 0; i < _numbers.length; ++i) {
 				_numbers[i]  = sprNumbers.getCanvasFromFrame(i);
 			}
 
@@ -197,7 +216,26 @@ define(function( require )
 
 		var canvas  = document.createElement('canvas');
 		var ctx     = canvas.getContext('2d');
-		var numbers = damage.toString().split('');
+		var numbers;
+		var suffix = null;
+
+		if (_enableSuffix) {
+			// Check for large numbers and convert accordingly
+			if (damage >= 100000000) {
+				damage = Math.floor(damage / 1000000);
+				suffix = 11; // 'M'
+			} else if (damage >= 1000000) {
+				damage = Math.floor(damage / 1000);
+				suffix = 10; // 'K'
+			}
+		}
+
+		numbers = damage.toString().split('');
+
+		// Add suffix to numbers if it exists
+		if (suffix !== null) {
+		    numbers.push(suffix);
+		}
 
 		var width   = 0;
 		var height  = 0;
@@ -440,8 +478,14 @@ define(function( require )
 
 			// Combo title
 			if (damage.type & Damage.TYPE.COMBO || damage.type & Damage.TYPE.COMBO_B) {
+				//Combo title need to remove if new one come up
+				if(damage.startTick < prevCombo[damage.entity.GID]){
+					continue;
+				}
+				prevCombo[damage.entity.GID] = damage.startTick;
+
 				// TODO: fix it
-				size = Math.min( perc, 0.05 ) * 75;
+				size = Math.min( perc, 0.05 ) * 70;
 
 				// Remove it
 				if (!(damage.type & Damage.TYPE.COMBO_FINAL) && perc > 0.15) {
@@ -450,7 +494,7 @@ define(function( require )
 
 				SpriteRenderer.position[0] = damage.entity.position[0];
 				SpriteRenderer.position[1] = damage.entity.position[1];
-				SpriteRenderer.position[2] = damage.entity.position[2] + 5 + perc;
+				SpriteRenderer.position[2] = damage.entity.position[2] + 7 + perc;
 			}
 
 			// Damage

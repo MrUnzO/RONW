@@ -37,37 +37,13 @@ define(function( require )
 	var Mouse            = require('Controls/MouseEventHandler');
 	var KEYS             = require('Controls/KeyEventHandler');
 	var UIManager        = require('UI/UIManager');
+	var EffectManager    = require('Renderer/EffectManager');
 	var Background       = require('UI/Background');
 	var Escape           = require('UI/Components/Escape/Escape');
 	var ChatBox          = require('UI/Components/ChatBox/ChatBox');
 	var ChatBoxSettings  = require('UI/Components/ChatBoxSettings/ChatBoxSettings');
-
-	var MiniMap;
-	if(PACKETVER.value >= 20180124) {
-		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
-	} else {
-		MiniMap          = require('UI/Components/MiniMap/MiniMap');
-	}
-
-	var UIVersionManager      = require('UI/UIVersionManager');
-
-	var BasicInfo;
-	if (UIVersionManager.getBasicInfoVersion() === 0) {
-		BasicInfo = require('UI/Components/BasicInfoV0/BasicInfoV0');
-	} else if (UIVersionManager.getBasicInfoVersion() === 3) {
-		BasicInfo = require('UI/Components/BasicInfoV3/BasicInfoV3');
-	} else if (UIVersionManager.getBasicInfoVersion() === 4) {
-		BasicInfo = require('UI/Components/BasicInfoV4/BasicInfoV4');
-	} else {
-		BasicInfo = require('UI/Components/BasicInfo/BasicInfo');
-	}
-	var SkillList;
-	if (UIVersionManager.getSkillListVersion() === 0) {
-		SkillList = require('UI/Components/SkillListV0/SkillListV0');
-	} else {
-		SkillList = require('UI/Components/SkillList/SkillList');
-	}
-
+	var StatusConst      = require('DB/Status/StatusState');
+    var CheckAttendance  = require('UI/Components/CheckAttendance/CheckAttendance');
 	var WinStats         = require('UI/Components/WinStats/WinStats');
 	var Inventory        = require('UI/Components/Inventory/Inventory');
 	var CartItems        = require('UI/Components/CartItems/CartItems');
@@ -75,6 +51,7 @@ define(function( require )
 	var ChangeCart       = require('UI/Components/ChangeCart/ChangeCart');
 	var ShortCut         = require('UI/Components/ShortCut/ShortCut');
 	var Equipment        = require('UI/Components/Equipment/Equipment');
+	var SwitchEquip      = require('UI/Components/SwitchEquip/SwitchEquip');
 	var ShortCuts        = require('UI/Components/ShortCuts/ShortCuts');
 	var StatusIcons      = require('UI/Components/StatusIcons/StatusIcons');
 	var ChatRoomCreate   = require('UI/Components/ChatRoomCreate/ChatRoomCreate');
@@ -83,18 +60,29 @@ define(function( require )
 	var PartyFriends     = require('UI/Components/PartyFriends/PartyFriends');
 	var Guild            = require('UI/Components/Guild/Guild');
 	var WorldMap         = require('UI/Components/WorldMap/WorldMap');
-	var SkillListMER     = require('UI/Components/SkillListMER/SkillListMER');
+	var SkillListMH      = require('UI/Components/SkillListMH/SkillListMH');
 	var MobileUI         = require('UI/Components/MobileUI/MobileUI');
 	var CashShop         = require('UI/Components/CashShop/CashShop');
 	var Bank             = require('UI/Components/Bank/Bank');
-	if(Configs.get('enableMapName')){
-		var MapName          = require('UI/Components/MapName/MapName');
-	}
-	if(PACKETVER.value >= 20180307) {
-		var Quest            = require('UI/Components/Quest/Quest');
-		var QuestWindow      = require('UI/Components/Quest/QuestWindow');
-	}
+	var ItemReform		 = require('UI/Components/ItemReform/ItemReform');
+	var LaphineSys		 = require('UI/Components/LaphineSys/LaphineSys');
+	var LaphineUpg		 = require('UI/Components/LaphineUpg/LaphineUpg');
+	var Rodex            = require('UI/Components/Rodex/Rodex');
+	var RodexIcon        = require('UI/Components/Rodex/RodexIcon');	
+	var Refine           = require('UI/Components/Refine/Refine');
+	var PetInformations  = require('UI/Components/PetInformations/PetInformations');
+	var HomunInformations = require('UI/Components/HomunInformations/HomunInformations');
+	var MapName          = require('UI/Components/MapName/MapName');
+	var Announce         = require('UI/Components/Announce/Announce');
 	var PluginManager    = require('Plugins/PluginManager');
+
+	var UIVersionManager      = require('UI/UIVersionManager');
+	// Version Dependent UIs
+	var BasicInfo = require('UI/Components/BasicInfo/BasicInfo');
+	var MiniMap   = require('UI/Components/MiniMap/MiniMap');
+	var SkillList = require('UI/Components/SkillList/SkillList');
+	var Quest     = require('UI/Components/Quest/Quest');
+	var PlayerViewEquip     = require('UI/Components/PlayerViewEquip/PlayerViewEquip');
 
 	/**
 	 * @var {string mapname}
@@ -116,6 +104,13 @@ define(function( require )
 	var snCounter = 0;
 	var chatLines = 0;
 
+
+	/**
+	 * @var {boolean} do we need to update UI versions?
+	 */
+	MapEngine.needsUIVerUpdate = false;
+
+
 	/**
 	 * Connect to Map Server
 	 *
@@ -128,7 +123,10 @@ define(function( require )
 		_mapName = mapName;
 
 		// Connect to char server
-		Network.connect( Network.utils.longToIP( ip ), port, function onconnect( success ) {
+		var forceAddress = Configs.get('forceUseAddress');
+		var server_info = Configs.getServer();
+		var current_ip = forceAddress ? server_info.address : Network.utils.longToIP( ip );
+		Network.connect( current_ip, port, function onconnect( success ) {
 
 			// Force reloading map
 			MapRenderer.currentMap = '';
@@ -165,7 +163,9 @@ define(function( require )
 			var is_sec_hbt = Configs.get('sec_HBT', null);
 
 			// Ping
-			var ping;
+			var ping, SP;
+			SP = Session.ping;
+
 			if(PACKETVER.value >= 20180307) {
 				ping = new PACKET.CZ.REQUEST_TIME2();
 			} else {
@@ -173,123 +173,189 @@ define(function( require )
 			}
 			var startTick = Date.now();
 			Network.setPing(function(){
-			if(is_sec_hbt)Network.sendPacket(hbt);
+				if(is_sec_hbt) { Network.sendPacket(hbt); }
+
 				ping.clientTime = Date.now() - startTick;
+				
+				if(!SP.returned && SP.pingTime)	{ console.warn('[Network] The server did not answer the previous PING!'); }
+				SP.pingTime = ping.clientTime;
+				SP.returned = false;
+
 				Network.sendPacket(ping);
 			});
 
 			Session.Playing = true;
 		}, true);
 
+
+		// Select UI version when needed
+		if(MapEngine.needsUIVerUpdate || !_isInitialised){
+			if(PACKETVER.value < 20200520) {
+				BasicInfo.selectUIVersion();
+			}
+			MiniMap.selectUIVersion();
+			SkillList.selectUIVersion();
+			Quest.selectUIVersion();
+			Equipment.selectUIVersion();
+			PlayerViewEquip.selectUIVersion();
+			WinStats.selectUIVersion();
+			Inventory.selectUIVersion();
+		}
+
 		// Do not hook multiple time
-		if (_isInitialised) {
-			return;
-		}
+		if (!_isInitialised) {
+			_isInitialised = true;
 
-		_isInitialised = true;
+			MapControl.init();
+			MapControl.onRequestWalk     = onRequestWalk;
+			MapControl.onRequestStopWalk = onRequestStopWalk;
+			MapControl.onRequestDropItem = onDropItem;
 
-		MapControl.init();
-		MapControl.onRequestWalk     = onRequestWalk;
-		MapControl.onRequestStopWalk = onRequestStopWalk;
-		MapControl.onRequestDropItem = onDropItem;
+			// Hook packets
+			Network.hookPacket( PACKET.ZC.AID,                 onReceiveAccountID );
+			Network.hookPacket( PACKET.ZC.ACCEPT_ENTER,        onConnectionAccepted );
+			Network.hookPacket( PACKET.ZC.ACCEPT_ENTER2,       onConnectionAccepted );
+			Network.hookPacket( PACKET.ZC.ACCEPT_ENTER3,       onConnectionAccepted );
+			Network.hookPacket( PACKET.ZC.NPCACK_MAPMOVE,      onMapChange );
+			Network.hookPacket( PACKET.ZC.NPCACK_SERVERMOVE,   onServerChange );
+			Network.hookPacket( PACKET.ZC.ACCEPT_QUIT,         onExitSuccess );
+			Network.hookPacket( PACKET.ZC.REFUSE_QUIT,         onExitFail );
+			Network.hookPacket( PACKET.ZC.RESTART_ACK,         onRestartAnswer );
+			Network.hookPacket( PACKET.ZC.ACK_REQ_DISCONNECT,  onDisconnectAnswer );
+			Network.hookPacket( PACKET.ZC.NOTIFY_TIME,         onPong );
+			Network.hookPacket( PACKET.ZC.PING_LIVE,           onPingLive );
+			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY,       onConfigNotify );
+			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY2,      onConfigNotify );
+			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY3,      onConfigNotify );
+			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY4,      onConfigNotify );
+			Network.hookPacket( PACKET.ZC.CONFIG,              onConfig );
 
-
-		// Hook packets
-		Network.hookPacket( PACKET.ZC.AID,                 onReceiveAccountID );
-		Network.hookPacket( PACKET.ZC.ACCEPT_ENTER,        onConnectionAccepted );
-		Network.hookPacket( PACKET.ZC.ACCEPT_ENTER2,       onConnectionAccepted );
-		Network.hookPacket( PACKET.ZC.ACCEPT_ENTER3,       onConnectionAccepted );
-		Network.hookPacket( PACKET.ZC.NPCACK_MAPMOVE,      onMapChange );
-		Network.hookPacket( PACKET.ZC.NPCACK_SERVERMOVE,   onServerChange );
-		Network.hookPacket( PACKET.ZC.ACCEPT_QUIT,         onExitSuccess );
-		Network.hookPacket( PACKET.ZC.REFUSE_QUIT,         onExitFail );
-		Network.hookPacket( PACKET.ZC.RESTART_ACK,         onRestartAnswer );
-		Network.hookPacket( PACKET.ZC.ACK_REQ_DISCONNECT,  onDisconnectAnswer );
-		Network.hookPacket( PACKET.ZC.NOTIFY_TIME,         onPong );
-
-		// Extend controller
-		require('./MapEngine/Main').call();
-		require('./MapEngine/NPC').call();
-		require('./MapEngine/Entity').call();
-		require('./MapEngine/Item').call();
-		require('./MapEngine/Mail').call();
-		require('./MapEngine/PrivateMessage').call();
-		require('./MapEngine/Storage').call();
-		require('./MapEngine/Group').init();
-		require('./MapEngine/Guild').init();
-		require('./MapEngine/Skill').call();
-		require('./MapEngine/ChatRoom').call();
-		require('./MapEngine/Pet').call();
-		require('./MapEngine/Homun').call();
-		require('./MapEngine/Store').call();
-		require('./MapEngine/Trade').call();
-		require('./MapEngine/Friends').init();
-		if(PACKETVER.value >= 20180307) {
+			// Extend controller
+			require('./MapEngine/Main').call();
+			require('./MapEngine/MapState').call();
+			require('./MapEngine/NPC').call();
+			require('./MapEngine/Entity').call();
+			require('./MapEngine/Item').call();
+			require('./MapEngine/Mail').call();
+			require('./MapEngine/PrivateMessage').call();
+			require('./MapEngine/Storage').call();
+			require('./MapEngine/Group').init();
+			require('./MapEngine/Guild').init();
+			require('./MapEngine/Skill').call();
+			require('./MapEngine/ChatRoom').call();
+			require('./MapEngine/Pet').call();
+			require('./MapEngine/Homun').call();
+			require('./MapEngine/Mercenary').call();
+			require('./MapEngine/Store').call();
+			require('./MapEngine/Trade').call();
+			require('./MapEngine/Friends').init();
+			require('./MapEngine/UIOpen').call();
 			require('./MapEngine/Quest').call();
+			require('./MapEngine/Rodex').call();
+			if(Configs.get('enableCashShop')){
+				require('./MapEngine/CashShop').call();
+			}
+
+			if(Configs.get('enableBank')) {
+				require('./MapEngine/Bank').init();
+			}
+
+			// Prepare UI
+			Escape.prepare();
+			Inventory.getUI().prepare();
+			CartItems.prepare();
+			Vending.prepare();
+			ChangeCart.prepare();
+			Equipment.getUI().prepare();
+			ShortCuts.prepare();
+			ShortCut.prepare();
+			ChatRoomCreate.prepare();
+			Emoticons.prepare();
+			FPS.prepare();
+			PartyFriends.prepare();
+			StatusIcons.prepare();
+			ChatBox.prepare();
+			ChatBoxSettings.prepare();
+			Guild.prepare();
+			WorldMap.prepare();
+			SkillListMH.homunculus.prepare();
+			SkillListMH.mercenary.prepare();
+			Rodex.prepare();
+			RodexIcon.prepare();
+
+			if(Configs.get('enableMapName')){
+				MapName.prepare();
+			}
+
+			if(Configs.get('enableCashShop')){
+				CashShop.prepare();
+			}
+
+			if(Configs.get('enableBank')) {
+				Bank.prepare();
+			}
+
+			if(PACKETVER.value >= 20160601) {
+				LaphineSys.prepare();
+			}
+
+			if(PACKETVER.value >= 20170726) {
+				LaphineUpg.prepare();
+			}
+
+			if(Configs.get('enableRefineUI') && PACKETVER.value >= 20161012) {
+				Refine.prepare();
+			}
+
+			if (PACKETVER.value >= 20170208) {
+				SwitchEquip.prepare();
+				SwitchEquip.onAddSwitchEquip	= onAddSwitchEquip;
+				SwitchEquip.onRemoveSwitchEquip	= onRemoveSwitchEquip;
+			}
+
+			if(Configs.get('enableCheckAttendance') && PACKETVER.value >= 20180307) {
+				CheckAttendance.prepare();
+			}
+
+			if (PACKETVER.value >= 20200916) {
+				ItemReform.prepare();
+			}
+
+			// Bind UI
+			PetInformations.onConfigUpdate          = onConfigUpdate;
+			HomunInformations.onConfigUpdate        = onConfigUpdate;
+			Escape.onExitRequest            = onExitRequest;
+			Escape.onCharSelectionRequest   = onRestartRequest;
+			Escape.onReturnSavePointRequest = onReturnSavePointRequest;
+			Escape.onResurectionRequest     = onResurectionRequest;
+			ChatBox.onRequestTalk           = onRequestTalk;
+
 		}
 
-		if(Configs.get('enableCashShop')){
-			require('./MapEngine/CashShop').call();
-		}
+		// Init selected UIs when needed
+		if(MapEngine.needsUIVerUpdate || !_isInitialised){
+			// Prepare UIs
+			MiniMap.getUI().prepare();
+			SkillList.getUI().prepare();
+			if(PACKETVER.value < 20200520) {
+				BasicInfo.getUI().prepare();
+			}
+			Equipment.getUI().prepare();
+			Quest.getUI().prepare();
+			WinStats.getUI().prepare();
 
-		if(Configs.get('enableBank')) {
-			require('./MapEngine/Bank').init();
-		}
+			// Bind UIs
+			WinStats.getUI().onRequestUpdate        = onRequestStatUpdate;
+			Equipment.getUI().onUnEquip             = onUnEquip;
+			Equipment.getUI().onConfigUpdate        = onConfigUpdate;
+			Equipment.getUI().onEquipItem           = onEquipItem;
+			Equipment.getUI().onRemoveOption        = onRemoveOption;
+			Inventory.getUI().onUseItem             = onUseItem;
+			Inventory.getUI().onEquipItem           = onEquipItem;
 
-		// Prepare UI
-		MiniMap.prepare();
-		Escape.prepare();
-		Inventory.prepare();
-		CartItems.prepare();
-		Vending.prepare();
-		ChangeCart.prepare();
-		Equipment.prepare();
-		ShortCuts.prepare();
-		ShortCut.prepare();
-		ChatRoomCreate.prepare();
-		Emoticons.prepare();
-		SkillList.prepare();
-		FPS.prepare();
-		PartyFriends.prepare();
-		StatusIcons.prepare();
-		BasicInfo.prepare();
-		ChatBox.prepare();
-		ChatBoxSettings.prepare();
-		Guild.prepare();
-		WorldMap.prepare();
-		SkillListMER.prepare();
-		if (UIVersionManager.getWinStatsVersion() === 0) {
-			WinStats.prepare();
+			// Avoid zone server change init
+			MapEngine.needsUIVerUpdate = false;
 		}
-		if(Configs.get('enableMapName')){
-			MapName.prepare();
-		}
-		if(PACKETVER.value >= 20180307) {
-			Quest.prepare();
-			QuestWindow.prepare();
-		}
-
-		if(Configs.get('enableCashShop')){
-			CashShop.prepare();
-		}
-
-		if(Configs.get('enableBank')) {
-			Bank.prepare();
-		}
-
-		// Bind UI
-		WinStats.onRequestUpdate        = onRequestStatUpdate;
-		Equipment.onUnEquip             = onUnEquip;
-		Equipment.onConfigUpdate        = onConfigUpdate;
-		Equipment.onEquipItem           = onEquipItem;
-		Equipment.onRemoveOption        = onRemoveOption;
-		Inventory.onUseItem             = onUseItem;
-		Inventory.onEquipItem           = onEquipItem;
-		Escape.onExitRequest            = onExitRequest;
-		Escape.onCharSelectionRequest   = onRestartRequest;
-		Escape.onReturnSavePointRequest = onReturnSavePointRequest;
-		Escape.onResurectionRequest     = onResurectionRequest;
-		ChatBox.onRequestTalk           = onRequestTalk;
 	};
 
 
@@ -299,7 +365,109 @@ define(function( require )
 	 */
 	function onPong( pkt )
 	{
-		//pkt.time
+		var SP = Session.ping;
+		
+		SP.returned = true;
+		SP.pongTime = 0;
+		SP.value = SP.pongTime - SP.pingTime;
+		
+		Session.serverTick = pkt.time + (SP.value/2); // Adjust with half ping
+	}
+
+
+	/**
+	 * Ping from server?
+	 */
+	function onPingLive( pkt )
+	{
+		var pong_pkt = new PACKET.CZ.PING_LIVE();
+		Network.sendPacket(pong_pkt);
+	}
+
+	/**
+	 * Receive user config from server
+	 *
+	 * @param {object} pkt - PACKET_ZC_CONFIG
+	 */
+	function onConfig( pkt )
+	{
+		switch(pkt.Config) {
+			case 0:
+				Equipment.getUI().setEquipConfig( pkt.Value );
+				ChatBox.addText(
+					DB.getMessage(1358 + (pkt.Value ? 1 : 0) ),
+					ChatBox.TYPE.INFO,
+					ChatBox.FILTER.PUBLIC_LOG
+				);
+				break;
+			case 1:
+				Session.Entity.call_flag = pkt.Value;
+				ChatBox.addText(
+					DB.getMessage(2978 + (pkt.Value ? 0 : 1) ),
+					ChatBox.TYPE.INFO,
+					ChatBox.FILTER.PUBLIC_LOG
+				);
+				break;
+			case 2:
+				PetInformations.setFeedConfig( pkt.Value );
+				ChatBox.addText(
+					DB.getMessage(2579 + (pkt.Value ? 0 : 1) ),
+					ChatBox.TYPE.INFO,
+					ChatBox.FILTER.PUBLIC_LOG
+				);
+				break;
+			case 3:
+				HomunInformations.setFeedConfig( pkt.Value );
+				ChatBox.addText(
+					DB.getMessage(3282 + (pkt.Value ? 0 : 1) ),
+					ChatBox.TYPE.INFO,
+					ChatBox.FILTER.PUBLIC_LOG
+				);
+				break;
+			default:
+				console.log('[PACKET_ZC_CONFIG] Unknown Config Type %d (value:%d)', pkt.Config, pkt.Value);
+		}
+	}
+
+	/**
+	 * Show some system configs
+	 *
+	 * @param {object} pkt - PACKET_ZC_CONFIG_NOTIFY
+	 */
+	function onConfigNotify( pkt )
+	{
+		if (typeof pkt.show_eq_flag !== 'undefined') {
+			Equipment.getUI().setEquipConfig( pkt.show_eq_flag );
+			ChatBox.addText(
+				DB.getMessage(1358 + (pkt.show_eq_flag ? 1 : 0) ),
+				ChatBox.TYPE.INFO,
+				ChatBox.FILTER.PUBLIC_LOG
+			);
+		}
+		if (typeof pkt.pet_autofeeding_flag !== 'undefined') {
+			PetInformations.setFeedConfig( pkt.pet_autofeeding_flag );
+			ChatBox.addText(
+				DB.getMessage(2579 + (pkt.pet_autofeeding_flag ? 0 : 1) ),
+				ChatBox.TYPE.INFO,
+				ChatBox.FILTER.PUBLIC_LOG
+			);
+		}
+		if (typeof pkt.call_flag !== 'undefined') {
+			Session.Entity.call_flag = pkt.call_flag;
+			ChatBox.addText(
+				DB.getMessage(2978 + (pkt.call_flag ? 0 : 1) ),
+				ChatBox.TYPE.INFO,
+				ChatBox.FILTER.PUBLIC_LOG
+			);
+		}
+		if (typeof pkt.homunculus_autofeeding_flag !== 'undefined') {
+			HomunInformations.setFeedConfig( pkt.homunculus_autofeeding_flag );
+			ChatBox.addText(
+				DB.getMessage(3282 + (pkt.homunculus_autofeeding_flag ? 0 : 1) ),
+				ChatBox.TYPE.INFO,
+				ChatBox.FILTER.PUBLIC_LOG
+			);
+		}
 	}
 
 
@@ -339,11 +507,31 @@ define(function( require )
 
 		Session.Entity.clevel = Session.Character.level;
 
-		BasicInfo.update('blvl', Session.Character.level );
-		BasicInfo.update('jlvl', Session.Character.joblevel );
-		BasicInfo.update('zeny', Session.Character.money );
-		BasicInfo.update('name', Session.Character.name );
-		BasicInfo.update('job',  Session.Character.job );
+		Session.mapState =  {
+			property        : 0,
+			type            : 0,
+			flag            : 0,
+			isPVPZone       : false,
+			isAgitZone      : false,
+			isPVP           : false,
+			isGVG           : false,
+			isSiege         : false,
+			isNoLockOn      : false,
+			showPVPCounter  : false,
+			showBFCounter   : false,
+			isBattleField   : false,
+		};
+
+		if(PACKETVER.value >= 20200520) {
+			BasicInfo.selectUIVersionWithJob(DB.getJobClass(Session.Character.job));
+			BasicInfo.getUI().prepare();
+		}
+
+		BasicInfo.getUI().update('blvl', Session.Character.level );
+		BasicInfo.getUI().update('jlvl', Session.Character.joblevel );
+		BasicInfo.getUI().update('zeny', Session.Character.money );
+		BasicInfo.getUI().update('name', Session.Character.name );
+		BasicInfo.getUI().update('job',  Session.Character.job );
 
 		// Fix http://forum.robrowser.com/?topic=32177.0
 		onMapChange({
@@ -386,50 +574,90 @@ define(function( require )
 				GID: Session.Character.GID
 			});
 			EntityManager.add( Session.Entity );
-			Session.Entity.aura.free(); // free aura so it loads in new map
+			if(Session.Entity.effectState & StatusConst.EffectState.FALCON) {
+				if(!Session.Entity.falcon)
+					Session.Entity.falcon = new Entity();
+				
+				Session.Entity.falcon.set({
+					objecttype: Session.Entity.falcon.constructor.TYPE_FALCON,
+					GID: Session.Entity.GID + '_FALCON',
+					PosDir: [Session.Entity.position[0], Session.Entity.position[1], 0],
+					job: Session.Entity.job + '_FALCON',
+					speed: 200,
+					name: "",
+					hp: -1,
+					maxhp: -1,
+					hideShadow: true,
+				});
+				EntityManager.add(Session.Entity.falcon);
+			} else if(Session.Entity.effectState & StatusConst.EffectState.WUG) {
+				if(!Session.Entity.wug)
+					Session.Entity.wug = new Entity();
+
+				Session.Entity.wug.set({
+					objecttype: Session.Entity.wug.constructor.TYPE_WUG,
+					GID: Session.Entity.GID + '_WUG',
+					PosDir: [Session.Entity.position[0], Session.Entity.position[1], 0],
+					job: 'WUG',
+					speed: Session.Entity.walk.speed,
+					name: "",
+					hp: -1,
+					maxhp: -1,
+				});
+				EntityManager.add(Session.Entity.wug);
+			}
+			// free and load aura so it loads in new map
+			Session.Entity.aura.free();
+			Session.Entity.aura.load(EffectManager);
 
 			// Initialize camera
 			Camera.setTarget( Session.Entity );
 			Camera.init();
 
 			// Add Game UI
-			MiniMap.append();
-			MiniMap.setMap( MapRenderer.currentMap );
+			MiniMap.getUI().append();
+			MiniMap.getUI().setMap( MapRenderer.currentMap );
 			if(Configs.get('enableMapName')){
 				MapName.setMap( MapRenderer.currentMap );
 				MapName.append();
 			}
 			ChatBox.append();
 			ChatBoxSettings.append();
-			BasicInfo.append();
+			BasicInfo.getUI().append();
 			Escape.append();
-			Inventory.append();
+			Inventory.getUI().append();
 			CartItems.append();
 			Vending.append();
 			ChangeCart.append();
-			Equipment.append();
+			Equipment.getUI().append();
 			ShortCuts.append();
 			StatusIcons.append();
 			ShortCut.append();
 			ChatRoomCreate.append();
 			Emoticons.append();
-			SkillList.append();
+			SkillList.getUI().append();
 			FPS.append();
 			PartyFriends.append();
 			Guild.append();
 			WorldMap.append();
-			SkillListMER.append();
+			SkillListMH.homunculus.append();
+			SkillListMH.mercenary.append();
 			MobileUI.append();
-			if (UIVersionManager.getWinStatsVersion() === 0) {
-				WinStats.append();
+
+			if (PACKETVER.value >= 20090617 && PACKETVER.value < 20140521) {
+				WinStats.getUI().append(Equipment.getUI().ui.find('.status_component'));
+			} else {
+				WinStats.getUI().append();
 			}
-			if(PACKETVER.value >= 20180307) {
-				Quest.append();
-				QuestWindow.append();
-			}
+
+			Quest.getUI().append();
 
 			if(Configs.get('enableCashShop')){
 				CashShop.append();
+			}
+
+			if(Configs.get('enableCheckAttendance') && PACKETVER.value >= 20180307) {
+				CheckAttendance.append();
 			}
 
 			// Reload plugins
@@ -439,6 +667,12 @@ define(function( require )
 			Network.sendPacket(
 				new PACKET.CZ.NOTIFY_ACTORINIT()
 			);
+
+			// Rates Info
+			if (Session.ratesInfo) {
+				Announce.append();
+        		Announce.set(Session.ratesInfo, '#FFFF00', true);
+			}
 		};
 
 		MapRenderer.setMap( pkt.mapName );
@@ -465,18 +699,19 @@ define(function( require )
 		var pkt = new PACKET.CZ.REQUEST_QUIT();
 		Network.sendPacket(pkt);
 
-		// No Answer from the server, close it now
-		UIManager.removeComponents();
-		Network.close();
-		Renderer.stop();
-		MapRenderer.free();
-		SoundManager.stop();
-		BGM.stop();
-
-		Background.remove(function(){
-			window.close();
-			require('Engine/GameEngine').init();
-		});
+		// Wait a second, if no answer from the server, then close it.
+		Events.setTimeout(function(){
+			UIManager.removeComponents();
+			Network.close();
+			Renderer.stop();
+			MapRenderer.free();
+			SoundManager.stop();
+			BGM.stop();
+			Background.remove();
+			Background.setImage('bgi_temp.bmp', function(){
+				require('Engine/GameEngine').reload();
+			});
+		}, 1000);
 	}
 
 
@@ -498,19 +733,15 @@ define(function( require )
 	 */
 	function onExitSuccess()
 	{
-		Renderer.stop();
-		MapRenderer.free();
-
 		UIManager.removeComponents();
 		Network.close();
 		Renderer.stop();
 		MapRenderer.free();
 		SoundManager.stop();
 		BGM.stop();
-
-		Background.remove(function(){
-			window.close();
-			require('Engine/GameEngine').init();
+		Background.remove();
+		Background.setImage('bgi_temp.bmp', function(){
+			require('Engine/GameEngine').reload();
 		});
 	}
 
@@ -559,13 +790,12 @@ define(function( require )
 			ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
 		}
 		else {
-			BasicInfo.remove();
+			BasicInfo.getUI().remove();
+			PlayerViewEquip.getUI().remove();
 			StatusIcons.clean();
 			ChatBox.clean();
 			ShortCut.clean();
-			if(PACKETVER.value >= 20180307) {
-				Quest.clean();
-			}
+			Quest.getUI().clean();
 			PartyFriends.clean();
 			MapRenderer.free();
 			Renderer.stop();
@@ -583,11 +813,12 @@ define(function( require )
 		switch (pkt.result) {
 			// Disconnect
 			case 0:
-				BasicInfo.remove();
+				BasicInfo.getUI().remove();
+				PlayerViewEquip.getUI().remove();
 				StatusIcons.clean();
 				ChatBox.clean();
 				ShortCut.clean();
-				Quest.clean();
+				Quest.getUI().clean();
 				PartyFriends.clean();
 				Renderer.stop();
 				onExitSuccess();
@@ -654,7 +885,7 @@ define(function( require )
 
 		//Super Novice Chant
 		if(chatLines > 7 && ([ 23, 4045, 4128, 4172, 4190, 4191, 4192, 4193]).includes(Session.Entity._job)){
-			if(Math.floor((BasicInfo.base_exp / BasicInfo.base_exp_next) * 1000.0) % 100 == 0){
+			if(Math.floor((BasicInfo.getUI().base_exp / BasicInfo.getUI().base_exp_next) * 1000.0) % 100 == 0){
 				if(text == DB.getMessage(790)){
 					snCounter = 1;
 				} else if(snCounter == 1 && text == (DB.getMessage(791) + ' ' + Session.Entity.display.name + ' ' +DB.getMessage(792))){
@@ -738,7 +969,7 @@ define(function( require )
 	{
 		// setTimeout isn't accurate, so reduce the value
 		// to avoid possible errors.
-		if (_walkLastTick + 450 > Renderer.tick) {
+		if (_walkLastTick + 200 > Renderer.tick) {
 			return;
 		}
 
@@ -753,7 +984,7 @@ define(function( require )
 			} else {
 				pkt         = new PACKET.CZ.REQUEST_MOVE();
 			}
-			if (!checkFreeCell(Mouse.world.x, Mouse.world.y, 1, pkt.dest)) {
+			if (!checkFreeCell(Mouse.world.x, Mouse.world.y, 9, pkt.dest)) {
 				pkt.dest[0] = Mouse.world.x;
 				pkt.dest[1] = Mouse.world.y;
 			}
@@ -895,6 +1126,13 @@ define(function( require )
 	 */
 	function onUseItem( index )
 	{
+		// Items are not usable when Laphine Synthesis, Upgrade, ItemReform UI is open (if they are available at all)
+		if ((LaphineSys.__loaded && LaphineSys.__active && LaphineSys.ui.is(':visible')) || 
+			(LaphineUpg.__loaded && LaphineUpg.__active && LaphineUpg.ui.is(':visible')) || 
+			(ItemReform.__loaded && ItemReform.__active && ItemReform.ui.is(':visible'))) {
+			return false;
+		}
+
 		var pkt;
 		if(PACKETVER.value >= 20180307) { // not sure - this date is when the shuffle packets stoped
 			pkt = new PACKET.CZ.USE_ITEM2();
@@ -931,6 +1169,29 @@ define(function( require )
 	{
 		var pkt   = new PACKET.CZ.REQ_TAKEOFF_EQUIP();
 		pkt.index = index;
+		Network.sendPacket(pkt);
+	}
+
+
+	/**
+	 * Add Switch Equip
+	 */
+	function onAddSwitchEquip( index, location )
+	{
+		var pkt          = new PACKET.CZ.REQ_WEAR_SWITCHEQUIP_ADD();
+		pkt.index		 = index;
+		pkt.wearLocation = location;
+		Network.sendPacket(pkt);
+	}
+
+
+	/**
+	 * Remove Switch Equip
+	 */
+	function onRemoveSwitchEquip( index )
+	{
+		var pkt          = new PACKET.CZ.REQ_WEAR_SWITCHEQUIP_REMOVE();
+		pkt.index		 = index;
 		Network.sendPacket(pkt);
 	}
 

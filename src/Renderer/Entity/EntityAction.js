@@ -132,8 +132,52 @@ define(['Renderer/Renderer', 'DB/DBManager'], function( Renderer, DB )
 				this.ACTION.SKILL      = 12;
 				break;
 
+			case Entity.TYPE_MERC:
+				if (this._job == 6017) { // Bowman
+					this.ACTION.IDLE       = 0;
+					this.ACTION.WALK       = 1;
+					this.ACTION.SIT        = 2;
+					this.ACTION.PICKUP     = 3;
+					this.ACTION.DIE        = 4;
+					this.ACTION.ATTACK1    = 5;
+					this.ACTION.HURT       = 6;
+					this.ACTION.FREEZE     = 7;
+					this.ACTION.FREEZE2    = 8;
+					// this.ACTION.READYFIGHT = 9; // Gets stuck
+					this.ACTION.ATTACK2    = 10;
+					this.ACTION.ATTACK3    = 11;
+					this.ACTION.SKILL      = 12
+				} else if (this._job == 6027 || this._job == 6037) { // Spearman/Fencer
+					this.ACTION.IDLE       = 0;
+					this.ACTION.WALK       = 1;
+					this.ACTION.SIT        = 2;
+					this.ACTION.PICKUP     = 3;
+					// this.ACTION.READYFIGHT = 4; // Gets stuck
+					this.ACTION.ATTACK1    = 5;
+					this.ACTION.HURT       = 6;
+					this.ACTION.FREEZE     = 7;
+					this.ACTION.DIE        = 8;
+					this.ACTION.FREEZE2    = 9;
+					this.ACTION.ATTACK2    = 10;
+					this.ACTION.ATTACK3    = 11;
+					this.ACTION.SKILL      = 12;
+				} else { // Monsters
+					this.ACTION.IDLE    = 0;
+					this.ACTION.WALK    = 1;
+					this.ACTION.ATTACK  = 2;
+					this.ACTION.HURT    = 3;
+					this.ACTION.DIE     = 4;
+					this.ACTION.ATTACK2 = 5;
+					this.ACTION.ATTACK3 = 6;
+					this.ACTION.ACTION  = 7;
+				}
+				break;
+
 			// Mob action
 			case Entity.TYPE_MOB:
+			case Entity.TYPE_NPC_ABR:
+			case Entity.TYPE_NPC_BIONIC:
+			case Entity.TYPE_WUG:
 				this.ACTION.IDLE   = 0;
 				this.ACTION.WALK   = 1;
 				this.ACTION.ATTACK = 2;
@@ -155,6 +199,7 @@ define(['Renderer/Renderer', 'DB/DBManager'], function( Renderer, DB )
 
 			// NPC action
 			case Entity.TYPE_NPC:
+			case Entity.TYPE_NPC2:
 				this.ACTION.IDLE   = 0;
 				// For those NPC that move with unitwalk scriptcommand
 				this.ACTION.WALK   = 1;
@@ -169,7 +214,6 @@ define(['Renderer/Renderer', 'DB/DBManager'], function( Renderer, DB )
 
 			// Homunculus
 			case Entity.TYPE_HOM:
-			case Entity.TYPE_MERC:
 			case Entity.TYPE_ELEM:
 				this.ACTION.IDLE    = 0;
 				this.ACTION.WALK    = 1;
@@ -179,6 +223,11 @@ define(['Renderer/Renderer', 'DB/DBManager'], function( Renderer, DB )
 				this.ACTION.ATTACK2 = 5;
 				this.ACTION.ATTACK3 = 6;
 				this.ACTION.ACTION  = 7;
+				break;
+
+			case Entity.TYPE_FALCON:
+				this.ACTION.IDLE    = 0;
+				this.ACTION.WALK    = 1;
 				break;
 
 			//TODO: define others Entities ACTION

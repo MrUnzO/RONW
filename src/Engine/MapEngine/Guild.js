@@ -22,18 +22,15 @@ define(function( require )
 	var BinaryWriter  = require('Utils/BinaryWriter');
 	var Session       = require('Engine/SessionStorage');
 	var Network       = require('Network/NetworkManager');
-	var PACKETVER        = require('Network/PacketVerManager');
+	var PACKETVER     = require('Network/PacketVerManager');
 	var PACKET        = require('Network/PacketStructure');
 	var EntityManager = require('Renderer/EntityManager');
 	var ChatBox       = require('UI/Components/ChatBox/ChatBox');
-	var MiniMap;
-	if(PACKETVER.value >= 20180124) {
-		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
-	} else {
-		MiniMap          = require('UI/Components/MiniMap/MiniMap');
-	}
 	var Guild         = require('UI/Components/Guild/Guild');
 	var UIManager     = require('UI/UIManager');
+
+	// Version Dependent UIs
+	var MiniMap = require('UI/Components/MiniMap/MiniMap');
 
 
 	/**
@@ -58,10 +55,12 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.GUILD_INFO,                    onGuildInfo );
 		Network.hookPacket( PACKET.ZC.GUILD_INFO2,                   onGuildInfo );
 		Network.hookPacket( PACKET.ZC.GUILD_INFO3,                   onGuildInfo );
+		Network.hookPacket( PACKET.ZC.GUILD_INFO4,                   onGuildInfo );
 		Network.hookPacket( PACKET.ZC.MYGUILD_BASIC_INFO,            onGuildRelation );
 		Network.hookPacket( PACKET.ZC.GUILD_EMBLEM_IMG,              onGuildEmblem );
 		Network.hookPacket( PACKET.ZC.MEMBERMGR_INFO,                onGuildMembers );
 		Network.hookPacket( PACKET.ZC.MEMBERMGR_INFO2,               onGuildMembers );
+		Network.hookPacket( PACKET.ZC.MEMBERMGR_INFO3,               onGuildMembers );
 		Network.hookPacket( PACKET.ZC.ACK_GUILD_MEMBER_INFO,         onGuildMemberUpdate );
 		Network.hookPacket( PACKET.ZC.POSITION_INFO,                 onGuildPositions );
 		Network.hookPacket( PACKET.ZC.POSITION_ID_NAME_INFO,         onGuildPositionsName );
@@ -86,6 +85,7 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.REQ_ALLY_GUILD,                onGuildAskForAlliance );
 		Network.hookPacket( PACKET.ZC.ACK_REQ_ALLY_GUILD,            onGuildAllianceResult );
 		Network.hookPacket( PACKET.ZC.ACK_REQ_HOSTILE_GUILD,         onGuildHostilityResult );
+		Network.hookPacket( PACKET.ZC.GUILD_AGIT_INFO,               onGuildCastleInfo );
 
 		// Hook UI
 		Guild.onGuildInfoRequest      = GuildEngine.requestInfo;
@@ -416,10 +416,10 @@ define(function( require )
 	{
 		// Server remove mark with "-1" as position
 		if (pkt.xPos < 0 || pkt.yPos < 0) {
-			MiniMap.removeGuildMemberMark( pkt.AID );
+			MiniMap.getUI().removeGuildMemberMark( pkt.AID );
 		}
 		else {
-			MiniMap.addGuildMemberMark( pkt.AID, pkt.xPos, pkt.yPos );
+			MiniMap.getUI().addGuildMemberMark( pkt.AID, pkt.xPos, pkt.yPos );
 		}
 	}
 
@@ -912,6 +912,10 @@ define(function( require )
 		}
 	}
 
+	function onGuildCastleInfo ( pkt )
+	{
+		// TODO: what is castle list?
+	}
 
 	/**
 	 * Initialize

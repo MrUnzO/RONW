@@ -139,6 +139,7 @@ define(function( require )
 					if (_intersect) {
 						Mouse.intersect = false;
 						Cursor.setType( Cursor.ACTION.DEFAULT );
+						getModule('Renderer/EntityManager').setOverEntity(null);
 					}
 				}
 			});
@@ -172,7 +173,7 @@ define(function( require )
 			// Focus the UI on mousedown
 			element.mousedown(this.focus.bind(this));
 		}
-		
+
 		if (this.mouseMode !== UIComponent.MouseMode.CROSS) {
 			var element = this.__mouseStopBlock || this.ui;
 			// Do not cross
@@ -180,7 +181,7 @@ define(function( require )
 				event.stopImmediatePropagation();
 			});
 		}
-		
+
 
 		if (this._htmlText) {
 			this.ui.detach();
@@ -218,9 +219,11 @@ define(function( require )
 
 
 	/**
-	 * Add the component to HTML
-	 */
-	UIComponent.prototype.append = function append()
+	* Add the component to HTML
+	*
+	* @param {string|jQueryElement} [target] - Target element to append the UI to. If not provided, appends to body.
+	*/
+	UIComponent.prototype.append = function append(target)
 	{
 		this.__active = true;
 
@@ -237,7 +240,20 @@ define(function( require )
 			return;
 		}
 
-		this.ui.appendTo('body');
+		// Determine the target element
+		var $target;
+		if (target) {
+			$target = jQuery(target);
+			if (!$target.length) {
+				console.error("Error: Unable to find target element for appending UI.");
+				return;
+			}
+		} else {
+			$target = jQuery('body');
+		}
+	
+		// Append UI content to the target element
+		this.ui.appendTo($target);
 
 		if (this.onKeyDown) {
 			jQuery(window).off('keydown.' + this.name).on('keydown.' + this.name, this.onKeyDown.bind(this));
@@ -252,7 +268,7 @@ define(function( require )
 		if (this.onAppend) {
 			this.onAppend();
 		}
-		
+
 		//Fix position after append (screen changed since last time and it loads invalid positions)
 		if (this.ui) {
 			var x, y, width, height, WIDTH, HEIGHT;
@@ -262,7 +278,7 @@ define(function( require )
 			height = this.ui.height();
 			WIDTH  = Renderer.width;
 			HEIGHT = Renderer.height;
-			
+
 
 			if (y + height > HEIGHT) {
 				this.ui.css('top', HEIGHT - Math.min(height, HEIGHT));
@@ -334,6 +350,29 @@ define(function( require )
 		this.ui.css('zIndex', list.length + 50 - j);
 	};
 
+	
+	/**
+	 * add UI at the top of others
+	 */
+	UIComponent.prototype.placeOnTop = function placeOnTop()
+	{
+		if (!this.manager) {
+			return;
+		}
+
+		var components = this.manager.components;
+		var name, zIndex, list = [];
+
+		// Store components zIndex in a list
+		for (name in components) {
+			if (this !== components[name] && components[name].__active) {
+				zIndex = parseInt(components[name].ui.css('zIndex'), 10);
+				list.push(zIndex);
+			}
+		}
+		let lastZIndex = Math.max(...list);
+		this.ui.css('zIndex', lastZIndex + 1);
+	};
 
 	/**
 	 * Clone a component
@@ -531,7 +570,7 @@ define(function( require )
 			Client.loadFile( DB.INTERFACE_PATH + hover, function(dataURI){
 				hover_uri = dataURI;
 				$node.mouseover(function(){ this.style.backgroundImage = 'url(' + hover_uri + ')'; });
-				$node.mouseout( function(){ this.style.backgroundImage = 'url(' + bg_uri    + ')'; });
+				$node.mouseout( function(){ this.style.backgroundImage = bg_uri ? 'url(' + bg_uri    + ')' : ''; });
 			});
 		}
 
@@ -543,7 +582,7 @@ define(function( require )
 			});
 
 			if (!hover) {
-				$node.mouseout( function(){ this.style.backgroundImage = 'url(' + bg_uri + ')'; });
+				$node.mouseout( function(){ this.style.backgroundImage = bg_uri ? 'url(' + bg_uri    + ')' : ''; });
 			}
 		}
 

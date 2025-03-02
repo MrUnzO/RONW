@@ -30,12 +30,9 @@ define(function( require )
 	var InputBox      = require('UI/Components/InputBox/InputBox');
 	var NpcMenu       = require('UI/Components/NpcMenu/NpcMenu');
 	var WinPopup      = require('UI/Components/WinPopup/WinPopup');
-	var MiniMap;
-	if(PACKETVER.value >= 20180124) {
-		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
-	} else {
-		MiniMap          = require('UI/Components/MiniMap/MiniMap');
-	}
+
+	// Version Dependent UIs
+	var MiniMap = require('UI/Components/MiniMap/MiniMap');
 
 	/**
 	 * NPC write a message
@@ -134,7 +131,17 @@ define(function( require )
 		InputBox.onAppend = function OnAppend()
 		{
 			InputBox.setType(type, true);
+			this.ui.find('input').select();
+
+			this.ui.find('input').keydown(function(e){
+				let enterKey = 13;
+				if (e.keyCode !== enterKey) return;
+	
+				let text = InputBox.ui.find('input').val();
+				if (text.length > 0) InputBox.onSubmitRequest(text);
+			});
 		};
+
 
 		InputBox.onSubmitRequest = function OnSubmitRequest( data )
 		{
@@ -251,12 +258,6 @@ define(function( require )
 		}
 
 		Client.loadFile( DB.INTERFACE_PATH + 'illust/' + pkt.imageName, function( url ){
-
-			// If the npc box is already closed, don't show the image
-			if (!NpcBox.ui || !NpcBox.ui.is(':visible')) {
-				return;
-			}
-
 			var img            = new Image();
 			img.src            = url;
 			img.style.position = 'absolute';
@@ -313,17 +314,17 @@ define(function( require )
 
 			// Add a mark for 15 seconds
 			case 0:
-				MiniMap.addNpcMark( pkt.id, pkt.xPos, pkt.yPos, pkt.color, 15000 );
+				MiniMap.getUI().addNpcMark( pkt.id, pkt.xPos, pkt.yPos, pkt.color, 15000 );
 				break;
 
 			// Add a mark
 			case 1:
-				MiniMap.addNpcMark( pkt.id, pkt.xPos, pkt.yPos, pkt.color, Infinity );
+				MiniMap.getUI().addNpcMark( pkt.id, pkt.xPos, pkt.yPos, pkt.color, Infinity );
 				break;
 
 			// Remove a mark
 			case 2:
-				MiniMap.removeNpcMark( pkt.id );
+				MiniMap.getUI().removeNpcMark( pkt.id );
 				break;
 		}
 	}

@@ -414,6 +414,7 @@ define(function( require )
 						break;
 
 					case 'rsm':
+					case 'rsm2':
 						result = new Model(buffer);
 						break;
 
@@ -422,7 +423,7 @@ define(function( require )
 						break;
 
 					case 'str':
-						result = new Str(buffer);
+						result = new Str(buffer, args?.texturePath ?? '');
 						break;
 
 					default:

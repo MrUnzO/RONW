@@ -9,60 +9,40 @@ const buildDate = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
 const dist = './dist/';
 const platform = "Web";
 (function build() {
+    const basePath = dist + platform;
     
-    //delete all files in dist
-    fs.rmSync(dist + platform +'/AI', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/index.html', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/GrannyModelViewer.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/GrfViewer.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/MapViewer.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/ModelViewer.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/Online.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/StrViewer.js', { recursive: true, force: true });
-    fs.rmSync(dist + platform +'/ThreadEventHandler.js', { recursive: true, force: true });
+    // Object mapping each module to its respective file path and compile function
+    const modules = {
+        'G': { path: '/GrannyModelViewer.js', action: () => compile("GrannyModelViewer", args['m']) },
+        'D': { path: '/GrfViewer.js', action: () => compile("GrfViewer", args['m']) },
+        'V': { path: '/MapViewer.js', action: () => compile("MapViewer", args['m']) },
+        'M': { path: '/ModelViewer.js', action: () => compile("ModelViewer", args['m']) },
+        'O': { path: '/Online.js', action: () => compile("Online", args['m']) },
+        'S': { path: '/StrViewer.js', action: () => compile("StrViewer", args['m']) },
+        'E': { path: '/EffectViewer.js', action: () => compile("EffectViewer", args['m']) },
+        'T': { path: '/ThreadEventHandler.js', action: () => compile("ThreadEventHandler", args['m']) },
+        'H': { path: '/index.html', action: createHTML }
+    };
 
-    if (!fs.existsSync(dist)){
+    // Ensure base directories exist
+    if (!fs.existsSync(dist)) {
         fs.mkdirSync(dist);
     }
-    if (!fs.existsSync(dist + platform)){
-        fs.mkdirSync(dist + platform);
+    if (!fs.existsSync(basePath)) {
+        fs.mkdirSync(basePath);
     }
 
-    if ((args && (args['G'])) || args['all'] || Object.keys(args).length === 0) {
-        compile("GrannyModelViewer", args['m']);
-    }
-
-    if ((args && (args['D'])) || args['all'] || Object.keys(args).length === 0) {
-        compile("GrfViewer", args['m']);
-    }
-
-    if ((args && (args['V'])) || args['all'] || Object.keys(args).length === 0) {
-        compile("MapViewer", args['m']);
-    }
-
-    if ((args && (args['M'])) || args['all'] || Object.keys(args).length === 0) {
-        compile("ModelViewer", args['m']);
-    }
-
-    if ((args && args['O']) || args['all'] || Object.keys(args).length === 0) {
-        compile("Online", args['m']);
-    }
-
-    if ((args && args['S']) || args['all'] || Object.keys(args).length === 0) {
-        compile("StrViewer", args['m']);
-    }
-
-    if ((args && args['T']) || args['all'] || Object.keys(args).length === 0) {
-        compile("ThreadEventHandler", args['m']);
-    }
-
-    if ((args && args['H']) || args['all'] || Object.keys(args).length === 0) {
-        createHTML();
-    }
-    
-    if ((args && args['A']) || args['all'] || Object.keys(args).length === 0) {
-        copyFolder('./AI', dist + platform + '/AI');
-    }
+    // Filter and process only necessary modules
+    const isAll = args['all'] || Object.keys(args).length === 0;
+    const activeModules = Object.keys(modules).filter(key => isAll || args[key]);
+    activeModules.forEach(key => {
+        const { path, action } = modules[key];
+        const fullPath = `${basePath}${path}`;
+        if (fs.existsSync(fullPath)) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+        }
+        action();
+    });
 })();
 
 function compile(appName, isMinify) {
@@ -107,6 +87,11 @@ function compile(appName, isMinify) {
             startFile = ["src/Vendors/require.js"];
             break;
 
+		case "EffectViewer":
+            appPath = "App/EffectViewer";
+            startFile = ["src/Vendors/require.js"];
+            break;
+
         default:
             break;
     }
@@ -142,7 +127,8 @@ function compile(appName, isMinify) {
                 console.log(appName + ".js - Minifying...");
                 const options = {
                     output: {
-                        ascii_only: true
+                        ascii_only: true,
+                        comments: false
                     }
                 };
                 source = await Terser.minify(source, options);
@@ -168,6 +154,7 @@ function createHTML(){
         <html>
             <head>
                 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+                <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
                 <title>roBrowser [${package.version} - ${buildDate}]</title>
             </head>
             <body>
@@ -185,15 +172,27 @@ function createHTML(){
                                     version: 55,
                                     langtype: 5,
                                     packetver: 20180704,
+                                    forceUseAddress: false,
                                     socketProxy: "ws://127.0.0.1:5999/",
-                                    packetKeys: true
+                                    packetKeys: false
                                 },
                             ],
+                            packetDump:  false,
                             skipServerList:  true,
                             skipIntro:       true,
+                            clientVersionMode: 'PacketVer',
                             plugins: {},
+							clientHash: null,
+							enableCashShop: false,
+							enableBank: false,
+							enableMapName: false,
+                            enableRefineUI: false,
+                            enableDmgSuffix: false,
+							enableCheckAttendance: false,
+							CameraMaxZoomOut: 5,
+                            loadLua: true,
                         };
-            
+
                         script = document.createElement('script');
                         script.type = 'text/javascript';
                         script.src = 'Online.js';
@@ -204,6 +203,7 @@ function createHTML(){
         </html>
     `;
     fs.writeFileSync(dist + platform + '/index.html', body, { encoding: "utf8" });
+    copyFolder('./src/UI/Components/Intro/images/', dist + platform + '/src/UI/Components/Intro/images/');
     console.log("index.html has been created in", (Date.now() - start), "ms.");
 }
 

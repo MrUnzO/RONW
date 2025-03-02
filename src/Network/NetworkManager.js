@@ -22,6 +22,7 @@ define(function( require )
 	var PacketVersions = require('./PacketVersions');
 	var PacketRegister = require('./PacketRegister');
 	var PacketCrypt    = require('./PacketCrypt');
+	var PacketLength   = require('./PacketLength');
 	var ChromeSocket   = require('./SocketHelpers/ChromeSocket');
 	var JavaSocket     = require('./SocketHelpers/JavaSocket');
 	var WebSocket      = require('./SocketHelpers/WebSocket');
@@ -49,6 +50,12 @@ define(function( require )
 	 * @var buffer
 	 */
 	var _save_buffer = null;
+
+	/**
+	 * Defines if dump packets as hex string
+	 * @var packetDump
+	 */
+	var packetDump = Configs.get('packetDump', false);
 
 
 	/**
@@ -152,8 +159,17 @@ define(function( require )
 	 */
 	function sendPacket( Packet )
 	{
-		console.log( '%c[Network] Send: ', 'color:#007070', Packet );
 		var pkt = Packet.build();
+
+		if(packetDump) {
+			let fp = new BinaryReader( pkt.buffer );
+			let id = fp.readUShort()
+			console.log("%c[Network] Dump Send: \n%cPacket ID: 0x%s\nPacket Name: %s\nLength: %d\nContent:\n%s", 
+				'color:#007070', 'color:#FFFFFF',
+				id.toString(16), Packet.constructor.name, pkt.buffer.byteLength, utilsBufferToHexString(pkt.buffer).toUpperCase());
+		}
+
+		console.log( '%c[Network] Send: ', 'color:#007070', Packet );
 
 		// Encrypt packet
 		if (_socket && _socket.isZone) {
@@ -162,7 +178,6 @@ define(function( require )
 
 		send( pkt.buffer );
 	}
-
 
 	/**
 	 * Send buffer to the server
@@ -277,20 +292,11 @@ define(function( require )
 			}
 
 			id     = fp.readUShort();
-
+			let packet_len = PacketLength.getPacketLength(id);
+			packet_len = packet_len ? packet_len : fp.length - offset;
 			// Packet not defined ?
-			if (!Packets.list[id]) {
-				console.error(
-					'[Network] Packet "%c0x%s%c" not register, skipping %d bytes.',
-					'font-weight:bold', id.toString(16), 'font-weight:normal', (fp.length-fp.tell())
-				);
-				break;
-			}
 
-			// Find packet size
-			packet  = Packets.list[id];
-
-			if (packet.size < 0) {
+			if (packet_len < 0) {
 				// Not enough bytes...
 				if (offset + 4 >= fp.length) {
 					_save_buffer = new Uint8Array( buffer, offset, fp.length - offset );
@@ -299,14 +305,14 @@ define(function( require )
 				length = fp.readUShort();
 			}
 			else {
-				length = packet.size;
+				length = packet_len;
 			}
 
 			offset += length;
 
 			// Not enough bytes, need to wait for new buffer to read more.
 			if (offset > fp.length) {
-				offset       = fp.tell() - (packet.size < 0 ? 4 : 2);
+				offset       = fp.tell() - (packet_len < 0 ? 4 : 2);
 				_save_buffer = new Uint8Array(
 					buffer,
 					offset,
@@ -315,24 +321,46 @@ define(function( require )
 				return;
 			}
 
-			// Parse packet
-			//if (!packet.instance) {
-				packet.instance = new packet.Struct(fp, offset);
-			//}
-			//else {
-			//	packet.Struct.call(packet.instance, fp, offset); //this causes packet conflicts where the same type of packets following eachother copy the previous packet's variables with the previous values
-			//}
+			if(Packets.list[id]) {
+				packet  = Packets.list[id];
+				
+				if(packetDump) {
+					let buffer_console = new Uint8Array( buffer, 0, length );
+					console.log("%c[Network] Dump Recv:\n%cPacket ID: 0x%s\nPacket Name: %s\nLength: %d\nContent:\n%s", 
+						'color:#900090', 'color:#FFFFFF', 
+						id.toString(16), packet.name, length, utilsBufferToHexString(buffer_console).toUpperCase());
+				}
 
-			console.log( '%c[Network] Recv:', 'color:#900090', packet.instance, packet.callback ? '' : '(no callback)'  );
+				// Parse packet
+				//if (!packet.instance) {
+					packet.instance = new packet.Struct(fp, offset);
+				//}
+				//else {
+				//	packet.Struct.call(packet.instance, fp, offset); //this causes packet conflicts where the same type of packets following eachother copy the previous packet's variables with the previous values
+				//}
+
+				console.log( '%c[Network] Recv:', 'color:#900090', packet.instance, packet.callback ? '' : '(no callback)'  );
+
+				// Call controller
+				if (packet.callback) {
+					packet.callback(packet.instance);
+				}
+			} else {
+				if(packetDump) {
+					let unknown_buffer = new Uint8Array( buffer, 0, length );
+					console.log("%c[Network] Dump Recv:\n%cPacket ID: 0x%s\nPacket Name: [UNKNOWN]\nLength: %d\nContent:\n%s",
+						'color:#900090', 'color:#FFFFFF',
+						id.toString(16), length, utilsBufferToHexString(unknown_buffer).toUpperCase());
+				}
+				console.error(
+					'[Network] Packet "%c0x%s%c" not registered, skipping %d bytes.',
+					'font-weight:bold', id.toString(16), 'font-weight:normal', (length)
+				);
+			}
 
 			// Support for "0" type
 			if (length) {
 				fp.seek( offset, SEEK_SET );
-			}
-
-			// Call controller
-			if (packet.callback) {
-				packet.callback(packet.instance);
 			}
 		}
 
@@ -430,6 +458,18 @@ define(function( require )
 		uint32[0]  = long;
 
 		return Array.prototype.join.call( uint8, '.' );
+	}
+
+	/**
+	 * Convert ArryBuffer into a hex string
+	 *
+	 * @param {ArrayBuffer} buffer
+	 */
+	function utilsBufferToHexString(buffer)
+	{
+		return [...new Uint8Array(buffer)]
+			.map(x => x.toString(16).padStart(2, '0') + " ")
+			.join('');
 	}
 
 

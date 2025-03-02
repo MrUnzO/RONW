@@ -27,15 +27,17 @@ define(function(require)
 	var UIComponent          = require('UI/UIComponent');
 	var ItemInfo             = require('UI/Components/ItemInfo/ItemInfo');
 	var Inventory            = require('UI/Components/Inventory/Inventory');
-	var SkillWindow          = require('UI/Components/SkillList/SkillList');
-	var SkillListMER         = require('UI/Components/SkillListMER/SkillListMER');
+	var SkillListMH          = require('UI/Components/SkillListMH/SkillListMH');
 	var SkillDescription     = require('UI/Components/SkillDescription/SkillDescription');
 	var SkillTargetSelection = require('UI/Components/SkillTargetSelection/SkillTargetSelection');
 	var Guild                = require('UI/Components/Guild/Guild');
+
+	// Version Dependent UIs
+	var SkillWindow = require('UI/Components/SkillList/SkillList');
+
+
 	var htmlText             = require('text!./ShortCut.html');
 	var cssText              = require('text!./ShortCut.css');
-
-
 	/**
 	 * Create Component
 	 */
@@ -72,7 +74,7 @@ define(function(require)
 	 * Initialize UI
 	 */
 	ShortCut.init = function init()
-	{
+	{	
 		this.ui.find('.resize').mousedown(onResize);
 		this.ui.find('.close').mousedown(stopPropagation).click(onClose);
 
@@ -94,6 +96,8 @@ define(function(require)
 
 		//Add to item owner name update queue
 		DB.UpdateOwnerName.ShortCut = onUpdateOwnerName;
+
+		Inventory.getUI().onUpdateItem = onUpdateItem;
 	};
 
 
@@ -112,6 +116,8 @@ define(function(require)
 		this.magnet.BOTTOM = _preferences.magnet_bottom;
 		this.magnet.LEFT = _preferences.magnet_left;
 		this.magnet.RIGHT = _preferences.magnet_right;
+		
+		SkillWindow.getUI().onUpdateSkill = onUpdateSkill;
 	};
 
 
@@ -184,9 +190,12 @@ define(function(require)
 				if (list[i].ID > 10000 && list[i].ID < 10100) {
 					skill = Guild.getSkillById(list[i].ID);
 				} else if (list[i].ID > 8000 && list[i].ID < 8044) {
-					skill = SkillListMER.getSkillById(list[i].ID);
+					skill = SkillListMH.mercenary.getSkillById(list[i].ID);
+					if (!skill) {
+						skill = SkillListMH.homunculus.getSkillById(list[i].ID);
+					}
 				} else {
-					skill = SkillWindow.getSkillById(list[i].ID);
+					skill = SkillWindow.getUI().getSkillById(list[i].ID);
 				}
 
 				if (skill && skill.level) {
@@ -316,7 +325,7 @@ define(function(require)
 		}
 		else {
 			_list[index].count = count;
-			var item = Inventory.getItemById(ID);
+			var item = Inventory.getUI().getItemById(ID);
 
 			// Do not display items not in inventory
 			if (!item) {
@@ -328,7 +337,7 @@ define(function(require)
 			name   = DB.getItemName(item);
 
 			// If equipment, do not display count
-			if (item.type === ItemType.WEAPON || item.type === ItemType.EQUIP) {
+			if (item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.SHADOWGEAR) {
 				count = 1;
 			}
 
@@ -479,9 +488,9 @@ define(function(require)
 		}
 
 		switch (data.from) {
-			case 'SkillListMER':
 			case 'SkillList':
 			case 'Guild':
+			case 'SkillListMH':
 				removeElement( true, element.SKID, row, element.selectedLevel ? element.selectedLevel : element.level);
 				addElement( index, true, element.SKID, element.selectedLevel ? element.selectedLevel : element.level);
 				ShortCut.onChange( index, true, element.SKID, element.selectedLevel ? element.selectedLevel : element.level);
@@ -572,7 +581,7 @@ define(function(require)
 
 			ItemInfo.append();
 			ItemInfo.uid = _list[index].ID;
-			ItemInfo.setItem(Inventory.getItemById(_list[index].ID ));
+			ItemInfo.setItem(Inventory.getUI().getItemById(_list[index].ID ));
 		}
 
 		return false;
@@ -610,17 +619,19 @@ define(function(require)
 			if(shortcut.ID > 10000 && shortcut.ID < 10100){
 				Guild.useSkillID(shortcut.ID, shortcut.count);
 			} else if (shortcut.ID > 8000 && shortcut.ID < 8044) {
-				SkillListMER.useSkillID(shortcut.ID, shortcut.count);
+				// if one of them don't have the skill, it returns early
+				SkillListMH.mercenary.useSkillID(shortcut.ID, shortcut.count);
+				SkillListMH.homunculus.useSkillID(shortcut.ID, shortcut.count);
 			} else {
-				SkillWindow.useSkillID(shortcut.ID, shortcut.count);
+				SkillWindow.getUI().useSkillID(shortcut.ID, shortcut.count);
 			}
 		}
 
 		// Use the item
 		else {
-			var item = Inventory.getItemById( _list[index].ID );
+			var item = Inventory.getUI().getItemById( _list[index].ID );
 			if (item) {
-				Inventory.useItem( item );
+				Inventory.getUI().useItem( item );
 			}
 		}
 	}
@@ -644,7 +655,7 @@ define(function(require)
 	 * @param {number} index
 	 * @param {number} count
 	 */
-	Inventory.onUpdateItem = function( index, count)
+	function onUpdateItem ( index, count)
 	{
 		ShortCut.setElement( false, index, count);
 	};
@@ -657,7 +668,7 @@ define(function(require)
 	 * @param {number} skill id
 	 * @param {number} level
 	 */
-	SkillWindow.onUpdateSkill = function( id, level)
+	function onUpdateSkill( id, level)
 	{
 		ShortCut.setElement( true, id, level);
 	};
@@ -675,7 +686,16 @@ define(function(require)
 	 * @param id
 	 * @param level
 	 */
-	SkillListMER.onUpdateSkill = function( id, level)
+	SkillListMH.mercenary.onUpdateSkill = function( id, level)
+	{
+		ShortCut.setElement( true, id, level);
+	};
+
+	/**
+	 * @param id
+	 * @param level
+	 */
+	SkillListMH.homunculus.onUpdateSkill = function( id, level)
 	{
 		ShortCut.setElement( true, id, level);
 	};

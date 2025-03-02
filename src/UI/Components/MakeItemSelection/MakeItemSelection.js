@@ -128,7 +128,7 @@
       *
       * @param {Array} list object to display
       */
-      MakeItemSelection.setCookingList = function setCookingList( list )
+      MakeItemSelection.setCookingList = function setCookingList( list, mkType )
       {
          var i, count;
          var item, it, file, name;
@@ -138,9 +138,9 @@
          this.ui.find('.materials').hide();
 		 this.ui.find('.item').remove();
 
-		 this.mkType = list[0]; // add mk type
+		 this.mkType = mkType; // add mk type
 
-         for (i = 1, count = list.length; i < count; ++i) {
+         for (i = 0, count = list.length; i < count; ++i) {
 
              item = list[i];
              it   = DB.getItemInfo( item );
@@ -231,7 +231,7 @@
      {
          this.onIndexSelected( this.index, this.material, this.mkType );
          if(this.index == -1){
-             this.material.forEach(item => Inventory.addItem(item));
+             this.material.forEach(item => Inventory.getUI().addItem(item));
          }
          this.remove();
      };
@@ -273,13 +273,12 @@
 		 var singleMatUsed = false;
 		 this.material.forEach(item => { if(validSingleMaterials.includes(item.ITID)){ singleMatUsed = true; } });
 		 
-		 console.log([this.material,singleMatUsed])
          if( this.material.length < 3 && (validMultipleMaterials.includes(item.ITID) || (validSingleMaterials.includes(item.ITID) && !singleMatUsed) )){
              if (this.addItemSub(item)) {
 				 switch(from)
 				{
 					case 'Inventory':
-						Inventory.removeItem( item.index, 1 );
+						Inventory.getUI().removeItem( item.index, 1 );
 					break;
 				}
                  this.material.push(item);

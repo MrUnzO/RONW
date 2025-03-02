@@ -3,10 +3,10 @@
 /client/BGM/*
 /client/data/*
 /client/resources/*
+/client/System/*
 /dist/
 /node_modules/
 /src/Plugins/*/
-/api.html
 /index.html
 /package-lock.json
 /GrannyModelViewer.js
@@ -16,6 +16,7 @@
 /Online.js
 /StrViewer.js
 /ThreadEventHandler.js
+/data/*
 
 # IDE files
 .idea/

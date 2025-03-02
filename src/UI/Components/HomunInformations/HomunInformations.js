@@ -16,13 +16,15 @@ define(function (require) {
     var Client = require('Core/Client');
     var Preferences = require('Core/Preferences');
     var Renderer = require('Renderer/Renderer');
+	var EntityManager    = require('Renderer/EntityManager');
     var UIManager = require('UI/UIManager');
     var UIComponent = require('UI/UIComponent');
-    var SkillListMER = require('UI/Components/SkillListMER/SkillListMER');
+    var SkillListMH = require('UI/Components/SkillListMH/SkillListMH');
     var htmlText = require('text!./HomunInformations.html');
     var cssText = require('text!./HomunInformations.css');
     var Session = require('Engine/SessionStorage');
     var AIDriver = require('Core/AIDriver');
+    var PACKETVER   = require('Network/PacketVerManager');
 
     /**
      * Create Component
@@ -38,6 +40,10 @@ define(function (require) {
         show: false,
     }, 1.0);
 
+    /**
+     * Auto Feed Flag
+     */
+    var homunculusAutoFeeding = 0;
 
     /**
      * Initialize component
@@ -50,6 +56,7 @@ define(function (require) {
         this.ui.find('.modify').click(onChangeName);
         this.ui.find('.feed').click(onFeed);
         this.ui.find('.del').click(onDelete);
+        this.ui.find('.homun_auto_feed').mousedown(homunToggleAutoFeed);
 
         if (!_preferences.show) {
             this.ui.hide();
@@ -61,10 +68,23 @@ define(function (require) {
         });
 
         this.ui.find('.skill').mousedown(function () {
-            SkillListMER.toggle()
+            SkillListMH.homunculus.toggle()
         });
+
+		// If no aggressive level defined, default to 1
+		// otherwise toggle and untoggle to remain the same
+		this.toggleAggressive();
+		this.toggleAggressive();
     };
 
+    HomunInformations.onAppend = function onAppend() {
+        Client.loadFile( DB.INTERFACE_PATH + 'checkbox_' + (homunculusAutoFeeding ? '1' : '0') + '.bmp', function(data){
+			HomunInformations.ui.find('.homun_auto_feed').css('backgroundImage', 'url(' + data + ')');
+		});
+
+        if(PACKETVER.value < 20170920)
+            HomunInformations.ui.find('.feeding').hide();
+    }
 
     /**
      * feed homunculus
@@ -91,6 +111,7 @@ define(function (require) {
         _preferences.y = parseInt(this.ui.css('top'), 10);
         _preferences.x = parseInt(this.ui.css('left'), 10);
         _preferences.save();
+        this.stopAI();
     };
 
 
@@ -113,10 +134,10 @@ define(function (require) {
                         this.focus();
                     }
                     if (!this.ui.is(':visible')) {
-                        SkillListMER.ui.hide();
+                        SkillListMH.homunculus.ui.hide();
                     }
                 } else {
-                    SkillListMER.ui.hide();
+                    SkillListMH.homunculus.ui.hide();
                     this.ui.hide();
                 }
                 break;
@@ -158,7 +179,7 @@ define(function (require) {
             this.ui.find('.name, .modify').addClass('disabled').attr('disabled', true);
         }
 
-        SkillListMER.setPoints(info.SKPoint);
+        SkillListMH.homunculus.setPoints(info.SKPoint);
     };
 
 
@@ -285,16 +306,19 @@ define(function (require) {
     };
 	
 	HomunInformations.toggleAggressive = function toggleAggressive(){
-		let agr = localStorage.getItem('AGGRESSIVE') == 0 ? 1 : 0;
-        localStorage.setItem('AGGRESSIVE', agr);
+		let agr = localStorage.getItem('HOM_AGGRESSIVE') == 0 ? 1 : 0;
+        localStorage.setItem('HOM_AGGRESSIVE', agr);
 	};
 	
 	HomunInformations.startAI = function startAI(){
 		this.stopAI();
-		AIDriver.reset();
+		AIDriver.homunculus.reset();
 		this.AILoop = setInterval(function () {
             if (Session.homunId) {
-                AIDriver.exec('AI(' + Session.homunId + ')')
+				var entity = EntityManager.get(Session.homunId);
+				if (entity) {
+                	AIDriver.homunculus.exec('AI(' + Session.homunId + ')')
+				}
             }
         }, 100);
 	};
@@ -309,7 +333,27 @@ define(function (require) {
 		this.stopAI();
 		this.startAI();
 	};
-	
+
+    HomunInformations.setFeedConfig = function setFeedConfig(flag)
+	{
+		homunculusAutoFeeding = flag;
+
+        // server sent this info before of homun
+        if(HomunInformations.ui) {
+            Client.loadFile( DB.INTERFACE_PATH + 'checkbox_' + (homunculusAutoFeeding ? '1' : '0') + '.bmp', function(data){
+                HomunInformations.ui.find('.homun_auto_feed').css('backgroundImage', 'url(' + data + ')');
+            });
+        }
+	}
+
+	/**
+	 * Toggle AutoFeed
+	 */
+	function homunToggleAutoFeed()
+	{
+		HomunInformations.onConfigUpdate( 3, !homunculusAutoFeeding ? 1 : 0 );
+	}
+
     /**
      * Request to modify homun's name
      */
@@ -324,7 +368,7 @@ define(function (require) {
      */
     function onClose() {
         HomunInformations.ui.hide();
-        SkillListMER.ui.hide();
+        SkillListMH.homunculus.ui.hide();
     }
 
 
@@ -347,6 +391,7 @@ define(function (require) {
     HomunInformations.reqMoveToOwner = function reqMoveToOwner() {};
 
     HomunInformations.reqHomunAction = function reqHomunAction() {};
+    HomunInformations.onConfigUpdate = function onConfigUpdate(/* type, value*/){};
 
 
     /**

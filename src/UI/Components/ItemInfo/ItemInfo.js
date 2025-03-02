@@ -18,13 +18,13 @@ define(function(require)
 	var jQuery             = require('Utils/jquery');
 	var DB                 = require('DB/DBManager');
 	var ItemType           = require('DB/Items/ItemType');
-	var RandomOption       = require('DB/Items/ItemRandomOptionTable');
 	var Client             = require('Core/Client');
 	var KEYS               = require('Controls/KeyEventHandler');
 	var CardIllustration   = require('UI/Components/CardIllustration/CardIllustration');
 	var UIManager          = require('UI/UIManager');
 	var Mouse              = require('Controls/MouseEventHandler');
 	var UIComponent        = require('UI/UIComponent');
+	var ItemCompare        = require('UI/Components/ItemCompare/ItemCompare');
 	var MakeReadBook       = require('UI/Components/MakeReadBook/MakeReadBook');
 	var Renderer           = require('Renderer/Renderer');
 	var SpriteRenderer     = require('Renderer/SpriteRenderer');
@@ -74,6 +74,9 @@ define(function(require)
 	{
 		if (event.which === KEYS.ESCAPE) {
 			ItemInfo.remove();
+			if (ItemCompare.ui) {
+				ItemCompare.remove();
+			}
 			event.stopImmediatePropagation();
 			return false;
 		}
@@ -90,7 +93,7 @@ define(function(require)
 		// Seems like "EscapeWindow" is execute first, push it before.
 		var events = jQuery._data( window, 'events').keydown;
 		events.unshift( events.pop() );
-		resize(ItemInfo.ui.find('.container').height());
+		resize(ItemInfo.ui.find('.description-inner').height() + 45);
 	};
 
 
@@ -100,6 +103,10 @@ define(function(require)
 	ItemInfo.onRemove = function onRemove()
 	{
 		this.uid = -1;
+		// Remove existing compare UI if it's currently displayed
+		if (ItemCompare.ui) {
+			ItemCompare.remove();
+		}
 	};
 
 
@@ -108,14 +115,19 @@ define(function(require)
 	 */
 	ItemInfo.init = function init()
 	{
-		this.ui.css({ top: 200, left:200 });
+		this.ui.css({ top: 200, left:480 });
 		this.ui.find('.extend').mousedown(onResize);
 		this.ui.find('.close')
 			.mousedown(function(event){
 				event.stopImmediatePropagation();
 				return false;
 			})
-			.click(this.remove.bind(this));
+			.click(function() {
+				this.remove();
+				if (ItemCompare.ui) {
+					ItemCompare.remove();
+				}
+			}.bind(this));
 
 		// Ask to see card.
 		this.ui.find('.view').click(function(){
@@ -148,10 +160,6 @@ define(function(require)
 		var customname = '';
 		var hideslots = false;
 		
-		if(item.type == ItemType.WEAPON && item.location == 0){ //Pet Egg
-			hideslots = true;
-		}
-		
 		if(item.slot){
 
 			var very = '';
@@ -175,25 +183,26 @@ define(function(require)
 						default: elem = DB.getMessage(450); break; // 's
 					}
 				case 0x00FE: // CREATE
+					elem = DB.getMessage(450);
 				case 0xFF00: // PET
 					hideslots = true;
 
-					name = 'Unknown';
+					name = '<font color="red" class="owner-' + GID + '">Unknown</font>';
 					var GID = (item.slot['card4']<<16) + item.slot['card3'];
 
-					if (DB.CNameTable[GID]){
-						name = DB.CNameTable[GID];
+					if( DB.CNameTable[GID] && DB.CNameTable[GID] !== 'Unknown') {
+						name = '<font color="blue" class="owner-' + GID + '">'+DB.CNameTable[GID]+'</font>';
 					} else {
-						DB.getNameByGID(GID);
 
 						//Add to item owner name update queue
-						DB.UpdateOwnerName.ItemInfo = onUpdateOwnerName;
+						DB.UpdateOwnerName[GID] = onUpdateOwnerName;
+						DB.getNameByGID(GID);
 					}
 
 					if(item.IsDamaged){
 						customname = very + ' ' + name + elem + ' ';
 					} else {
-						customname = name=='Unknown' ? very + ' ' + '^FF0000' + name + '^000000 ' + elem + ' ' : very + ' ' + '^0000FF' + name + '^000000 ' + elem + ' ';
+						customname = !DB.CNameTable[GID] ? very + ' ' + ' ' + name + ' ' + elem + ' ' : very + ' ' + ' ' + name + ' ' + elem + ' ';
 					}
 
 					break;
@@ -209,18 +218,15 @@ define(function(require)
 		if(item.Options && item.IsIdentified){
 			//Clear all option list
 			optionContainer.html('');
+
 			//Loop to Show Options
 			for (let i = 1; i <= 5; i++) {
-				if(item.Options[i].index > 0 && RandomOption[item.Options[i].index]){
+				if(item.Options[i].index > 0) {
+					let randomOptionName = DB.getOptionName(item.Options[i].index);
 					let optionList = 	'<div class="optionlist">' +
 															'<div class="border">' +
-															RandomOption[item.Options[i].index].replace('{0}', item.Options[i].value) +
+															randomOptionName.replace('\%d', item.Options[i].value).replace('\%\%', '%') +
 															'</div>' +
-													'</div>';
-					optionContainer.append(optionList);
-				}else if(item.Options[i].index > 0 && !RandomOption[item.Options[i].index]){
-					let optionList = 	'<div class="optionlist">' +
-															'<div class="border">Unknow option.</div>' +
 													'</div>';
 					optionContainer.append(optionList);
 				}
@@ -237,7 +243,30 @@ define(function(require)
 			ui.find('.title').removeClass('damaged');
 		}
 
-		ui.find('.title').text( item.IsIdentified ? (customname + it.identifiedDisplayName) : it.unidentifiedDisplayName );
+		/* Grade System */
+		var container = ui.find('.container');
+		if (item.enchantgrade)  {
+			Client.loadFile(DB.INTERFACE_PATH + 'basic_interface/collection_bg_g' + item.enchantgrade + '.bmp', function(data){
+				container.css('backgroundImage', 'url(' + data + ')');
+			});
+		} else {
+			Client.loadFile(DB.INTERFACE_PATH + 'basic_interface/collection_bg.bmp', function(data){
+				container.css('backgroundImage', 'url(' + data + ')');
+			});
+		}
+
+		var gradeName = '';
+		if (item.enchantgrade) {
+			let list = ['','D','C','B','A'];
+			gradeName = '[' + list[item.enchantgrade] +'] ';
+		}
+
+		var refine = '';
+		if (item.RefiningLevel) {
+			refine = '+' + item.RefiningLevel + ' ';
+		}
+
+		ui.find('.title').text( item.IsIdentified ? (refine + gradeName + customname + it.identifiedDisplayName) : it.unidentifiedDisplayName );
 		ui.find('.description-inner').text( item.IsIdentified ? it.identifiedDescriptionName : it.unidentifiedDescriptionName );
 
 		// Add view button (for cards)
@@ -248,9 +277,14 @@ define(function(require)
 			default:
 				cardList.parent().hide();
 				break;
-
+			
+			case ItemType.ARMOR:
+				// Pet Egg check for old versions (before ItemType.PETEGG existed)
+				if (DB.isPetEgg(item.ITID)){
+					hideslots = true;
+				}
 			case ItemType.WEAPON:
-			case ItemType.EQUIP:
+			case ItemType.SHADOWGEAR:
 				if (hideslots){
 					cardList.parent().hide();
 					break;
@@ -274,7 +308,7 @@ define(function(require)
 				break;
 
 		}
-		resize(ItemInfo.ui.find('.container').height());
+		resize(ItemInfo.ui.find('.description-inner').height() + 45);
 	};
 
 
@@ -372,7 +406,7 @@ define(function(require)
 		var descriptionInner = ItemInfo.ui.find('.description-inner');
 		var containerHeight = height;
 		var minHeight = 120;
-		var maxHeight = (descriptionInner.height() + 45 > 120) ? descriptionInner.height() + 45 : 120;
+		var maxHeight = descriptionInner.height() + 45 > 120 ? Math.min(descriptionInner.height() + 45, 448) : 120;
 
 		if (containerHeight <= minHeight) {
 			containerHeight = minHeight;
@@ -390,11 +424,11 @@ define(function(require)
 		});
 	}
 
-	function onUpdateOwnerName (){
-		var str = ItemInfo.ui.find('.title').text();
-		ItemInfo.ui.find('.title').text(str.replace('Unknown\'s', '^0000FF'+pkt.CName+'\'s^000000'));
+	function onUpdateOwnerName (pkt){
+		var str = ItemInfo.ui.find('.owner-'+pkt.GID).text();
+		ItemInfo.ui.find('.owner-'+pkt.GID).text(pkt.CName);
 
-		delete DB.UpdateOwnerName.ItemInfo;
+		delete DB.UpdateOwnerName[pkt.GID];
 	}
 
 
@@ -554,6 +588,62 @@ define(function(require)
 
 		return true;
 	 }
+
+
+	/**
+	 * A function that handles previewing an item.
+	 *
+	 * @param {type} pkt - The packet containing information about the item
+	 * @return {type} Indicates success or failure of the preview action
+	 */
+	function onItemPreview(pkt)
+	{
+		if (pkt) {
+			var Equipment = getModule('UI/Components/Equipment/Equipment');
+			var Inventory = getModule('UI/Components/Inventory/Inventory');
+			let item = Inventory.getUI().getItemByIndex(pkt.index);
+
+			if (!item) {
+				return false;
+			}
+
+			// Remove existing compare UI if it's currently displayed
+			if (ItemCompare.ui) {
+				ItemCompare.remove();
+			}
+
+			// Don't add the same UI twice, remove it
+			if (ItemInfo.uid === item.ITID) {
+				ItemInfo.remove();
+				if (ItemCompare.ui) {
+					ItemCompare.remove();
+				}
+				return false;
+			}
+
+			// Add ui to window
+			ItemInfo.append();
+			ItemInfo.uid = item.ITID;
+			ItemInfo.setItem(item);
+
+			// Check if there is an equipped item in the same location
+			var compareItem = Equipment.getUI().isInEquipList(item.location);
+
+			// If a comparison item is found, display comparison
+			if (compareItem && Inventory.getUI().itemcomp) {
+				ItemCompare.prepare();
+				ItemCompare.append();
+				ItemCompare.uid = compareItem.ITID;
+				ItemCompare.setItem(compareItem);
+			}
+		}
+	};
+
+
+	/**
+	 * Packet Hooks to functions
+	 */
+	Network.hookPacket( PACKET.ZC.CHANGE_ITEM_OPTION,		onItemPreview );
 
 	/**
 	 * Create component and export it
