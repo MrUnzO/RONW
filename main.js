@@ -3,10 +3,10 @@ const ROConfig = {
     development: true, // don't need to compile javascript files in chrome app since it's already a package.
     grfList: ['data.grf'],
     readDataFolder: true,
-    rootFolder: "G:/Private Server/Ragnarok/Clients/2018/",
+    rootFolder: "G:/Private Server/Ragnarok/Clients/20210406/",
     servers: [
-        {
-            display: 'Localhost Server',
+		{
+			display: 'Localhost Server',
             desc: "roBrowser's demo server",
             address: '127.0.0.1',
             port: 6900,
@@ -53,7 +53,7 @@ const path = require('path');
     } else {
         ROConfig.dataPath = path.dirname(process.execPath) + '/';
     }
-    
+
     console.log('RONW Version:', require('package.json').version);
     console.log('[Flavors] ' + process.versions['nw-flavor']);
     console.log('[Working Path] ' + ROConfig.dataPath);
@@ -76,7 +76,7 @@ const path = require('path');
         console.log("Closing app.")
         nw.App.closeAllWindows();
     }
-    
+
     ROConfig.fileList = [];
     const folderList = ['System', 'BGM'];
     const promises = folderList.map(async function(folder){
@@ -112,9 +112,9 @@ const path = require('path');
 
 function getAllFiles(dirPath, arrayOfFiles) {
     files = fs.readdirSync(dirPath)
-  
+
     arrayOfFiles = arrayOfFiles || []
-  
+
     files.forEach(function(file) {
       if (fs.statSync(dirPath + "/" + file).isDirectory()) {
         arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles)
@@ -122,7 +122,7 @@ function getAllFiles(dirPath, arrayOfFiles) {
         arrayOfFiles.push(path.join(dirPath, "/", file))
       }
     })
-  
+
     return arrayOfFiles
 }
 
