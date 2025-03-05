@@ -40,7 +40,7 @@ define(function (require) {
 	/**
 	 * Create Basic Info component
 	 */
-	var BasicInfo = new UIComponent('BasicInfoV3', htmlText, cssText);
+	var BasicInfoV3 = new UIComponent('BasicInfoV3', htmlText, cssText);
 
 	/**
 	 * Stored data

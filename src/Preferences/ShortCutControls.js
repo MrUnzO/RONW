@@ -56,8 +56,8 @@ define(["Core/Preferences",	"Controls/KeyEventHandler", "UI/UIVersionManager"],	
 	ShortCuts.Equipment =		{	init:{key: KEYS.Q,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'Equipment',			cmd:'TOGGLE'				};
 	ShortCuts.WinStats =		{	init:{key: KEYS.A,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'WinStats',			cmd:'TOGGLE'				};//FIX ME: Need to implement conditional shortcuts based on version and dynamic settings window. For now let the status window deal with this.
 	ShortCuts.ShortCuts =		{	init:{key: KEYS.M,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'TOGGLE'				};
-	ShortCuts.SkillList =		{	init:{key: KEYS.S,		alt: true,	ctrl: false,	shift: false},	cust: false,	component: UIVersionManager.getUIComponent('SkillList'),			cmd:'TOGGLE'				};
-	ShortCuts.BasicInfo =		{	init:{key: KEYS.V,		alt: true,	ctrl: false,	shift: false},	cust: false,	component: UIVersionManager.getUIComponent('BasicInfo'),			cmd:'EXTEND'				};
+	ShortCuts.SkillList =		{	init:{key: KEYS.S,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'SkillList',			cmd:'TOGGLE'				};
+	ShortCuts.BasicInfo =		{	init:{key: KEYS.V,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'BasicInfo',			cmd:'EXTEND'				};
 	ShortCuts.Friends =			{	init:{key: KEYS.H,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'PartyFriends',		cmd:'FRIEND'				};
 	ShortCuts.Party =			{	init:{key: KEYS.Z,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'PartyFriends',		cmd:'PARTY'					};
 	ShortCuts.HomunInfo =		{	init:{key: KEYS.R,		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'HomunInformations',	cmd:'TOGGLE'				};
@@ -67,15 +67,15 @@ define(["Core/Preferences",	"Controls/KeyEventHandler", "UI/UIVersionManager"],	
 	ShortCuts.ChatSize =		{	init:{key: KEYS.F10,	alt: false,	ctrl: false,	shift: false},	cust: false,	component:'ChatBox', 			cmd:'updateHeight'			};
 	ShortCuts.SkillBarSize =	{	init:{key: KEYS.F12,	alt: false,	ctrl: false,	shift: false},	cust: false,	component:'ShortCut',			cmd:'EXTEND'				};
 	ShortCuts.Bank =			{	init:{key: KEYS.B,		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'Bank',				cmd:'TOGGLE'				};
-			
-	//Custom		
+
+	//Custom
 	/*ShortCuts.M_UI =			{	init:{key: KEYS[9],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'MobileUI',			cmd:'SHOW'					};
 	ShortCuts.M_Toggle =		{	init:{key: KEYS[8],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'MobileUI',			cmd:'TOGGLE'				};
 	ShortCuts.M_Targeting =		{	init:{key: KEYS[2],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'MobileUI',			cmd:'TG'					};
 	ShortCuts.M_AutoTarget =	{	init:{key: KEYS[3],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'MobileUI',			cmd:'AT'					};
 	ShortCuts.M_Attack =		{	init:{key: KEYS[1],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'MobileUI',			cmd:'ATK'					};*/
-	
-	
+
+
 	ShortCuts.Macro1 =			{	init:{key: KEYS[1],		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_MACRO_1'		};
 	ShortCuts.Macro2 =			{	init:{key: KEYS[2],		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_MACRO_2'		};
 	ShortCuts.Macro3 =			{	init:{key: KEYS[3],		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_MACRO_3'		};
@@ -86,8 +86,8 @@ define(["Core/Preferences",	"Controls/KeyEventHandler", "UI/UIVersionManager"],	
 	ShortCuts.Macro8 =			{	init:{key: KEYS[8],		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_MACRO_8'		};
 	ShortCuts.Macro9 =			{	init:{key: KEYS[9],		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_MACRO_9'		};
 	ShortCuts.Macro10 =			{	init:{key: KEYS[0],		alt: true,	ctrl: false,	shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_MACRO_0'		};
-	
-	
+
+
 	ShortCuts.Flag1 =			{	init:{key: KEYS[1],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_FLAG_1'		};
 	ShortCuts.Flag2 =			{	init:{key: KEYS[2],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_FLAG_2'		};
 	ShortCuts.Flag3 =			{	init:{key: KEYS[3],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_FLAG_3'		};
@@ -97,8 +97,8 @@ define(["Core/Preferences",	"Controls/KeyEventHandler", "UI/UIVersionManager"],	
 	ShortCuts.Flag7 =			{	init:{key: KEYS[7],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_FLAG_7'		};
 	ShortCuts.Flag8 =			{	init:{key: KEYS[8],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_FLAG_8'		};
 	ShortCuts.Flag9 =			{	init:{key: KEYS[9],		alt: false,	ctrl: true,		shift: false},	cust: false,	component:'ShortCuts',			cmd:'EXECUTE_FLAG_9'		};
-	
+
 	var ShortCutControls = { ShortCuts: ShortCuts };
-	
+
 	return Preferences.get("ShortCutControls",	ShortCutControls, 1.2);
 });

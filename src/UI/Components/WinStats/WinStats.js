@@ -35,7 +35,7 @@ define(function (require)
 
 		}
 	};
-	this.ui.topDroppable().droppable();
+
 
 	var WinStatsController = UIVersionManager.getUIController(publicName, versionInfo);
 

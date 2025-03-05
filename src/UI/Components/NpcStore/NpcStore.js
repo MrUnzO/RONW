@@ -396,7 +396,7 @@ define(function(require)
 					it = Inventory.getUI().getItemByIndex(items[i].index);
 
 					var condition = (InventoryVersion !== 'InventoryV0') ? it && (!Inventory.getUI().npcsalelock || it.PlaceETCTab < 1) : it;
-					
+
 					if (condition) {
 						item                 = jQuery.extend({}, it);
 						item.price           = items[i].price;
@@ -607,20 +607,7 @@ define(function(require)
 				'</div>'
 			);
 		}
-		else if ('overchargeprice' in item && item.price !== item.overchargeprice) {
-			price += ' -> ' + prettyZeny(item.overchargeprice);
-		}
 
-		// Create it
-		content.append(
-			'<div class="item" draggable="true" data-index="'+ item.index +'">' +
-				'<div class="icon"></div>' +
-				'<div class="amount">' + (isFinite(item.count) ? item.count : '') + '</div>' +
-				'<div class="name">'+ jQuery.escape(DB.getItemName(item)) +'</div>' +
-				'<div class="price">'+ price +'</div>' +
-				'<div class="unity">Z</div>' +
-			'</div>'
-		);
 
 		content.find('.item[data-index='+ item.index +']').draggable({
 			refreshPositions: true,
@@ -635,7 +622,7 @@ define(function(require)
 				delete window._OBJ_DRAG_;
 			},
 			cursorAt: {
-				left: 12, 
+				left: 12,
 				top: 12
 			}
 		});
@@ -797,7 +784,7 @@ define(function(require)
 					let inputCurrency = NpcStore.ui.find(`.InputWindow .item[data-index="${index}"]`);
 					let currencyItemWeight = parseInt(inputCurrency.attr('data-weight'), 10);
 					outputItem.total_weight = currencyItemWeight * outputItem.count;
-		
+
 					let inputCurrencyDiv = NpcStore.ui.find(`.InputWindow .item[data-index="${index}"] .currency_amount`);
 					let outputCurrencyDiv = NpcStore.ui.find(`.OutputWindow .item[data-index="${index}"] .currency_amount`);
 					let currencyAmount = parseInt(inputCurrencyDiv.text(), 10);
@@ -814,7 +801,7 @@ define(function(require)
 
 			NpcStore.calculateCost();
 			NpcStore.calculateWeight(); // Update total weight after every operation
-		};		
+		};
 	}();
 
 

@@ -61,6 +61,7 @@ define(function(require)
 		this.ui.find('.titlebar .mini').click(function(){ WinStats.ui.find('.panel').toggle(); });
 		this.ui.find('.titlebar .close').click(function(){ WinStats.ui.hide(); });
 		this.draggable(this.ui.find('.titlebar'));
+		this.ui.topDroppable().droppable();
 
 	};
 
