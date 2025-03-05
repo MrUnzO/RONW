@@ -7,7 +7,8 @@
  *
  * @author Vincent Thibault
  */
-define(function (require) {
+define(function (require)
+{
 	'use strict';
 
 	var Configs = require('Core/Configs');
@@ -16,19 +17,19 @@ define(function (require) {
 
 	var _UIAliases = {};
 
-	UIVersionManager.getUIAlias = function (name) {
+	UIVersionManager.getUIAlias = function( name ){
 		return name in _UIAliases ? _UIAliases[name] : false;
 	};
 
-	UIVersionManager.selectUIVersion = function (publicName, versionInfo) {
+	UIVersionManager.selectUIVersion = function( publicName, versionInfo ){
 		var SelectedUI = versionInfo.default;
 		var _maxDate = 0;
 
-		function getUIbyGameMode(gameMode) {
-			if (typeof gameMode === 'object' && Object.keys(gameMode).length > 0) {
+		function getUIbyGameMode(gameMode){
+			if(typeof gameMode === 'object' && Object.keys(gameMode).length > 0){
 				for (const [keydate, UI] of Object.entries(gameMode)) {
 					var dateNum = parseInt(keydate);
-					if (PACKETVER.value >= dateNum && dateNum > _maxDate) {
+					if(PACKETVER.value >= dateNum && dateNum > _maxDate){
 						SelectedUI = UI;
 						_maxDate = dateNum;
 					}
@@ -39,7 +40,7 @@ define(function (require) {
 		// Common UI
 		getUIbyGameMode(versionInfo.common);
 
-		if (Configs.get('renewal')) {
+		if(Configs.get('renewal')){
 			// Renewal only UI
 			getUIbyGameMode(versionInfo.re);
 		} else {
@@ -49,37 +50,39 @@ define(function (require) {
 
 		// Store selected UI name
 		_UIAliases[publicName] = SelectedUI.name;
-		console.log('%c[UIVersion] ' + publicName + ': ', 'color:#007000', SelectedUI.name);
+		console.log( "%c[UIVersion] "+publicName+": ", "color:#007000", SelectedUI.name );
 		return SelectedUI;
-	};
+	}
 
-	UIVersionManager.getUIController = function (publicName, versionInfo) {
+	UIVersionManager.getUIController = function(publicName, versionInfo){
 		var _selectedUI;
 
 		var UIController = {};
 
-		UIController.selectUIVersion = function () {
+		UIController.selectUIVersion = function(){
 			_selectedUI = UIVersionManager.selectUIVersion(publicName, versionInfo);
 		};
 
-		UIController.selectUIVersionWithJob = function (job) {
+		UIController.selectUIVersionWithJob = function(job) {
 			_selectedUI = versionInfo.job[job] || versionInfo.job.default;
 			_UIAliases[publicName] = _selectedUI.name;
-			console.log('[UIVersion] ' + publicName + ': ', _selectedUI.name);
+			console.log("[UIVersion] " + publicName + ": ", _selectedUI.name);
 		};
 
-		UIController.selectSpecificUIVersion = function (version) {
+		UIController.selectSpecificUIVersion = function(version) {
 			_selectedUI = versionInfo.common[version] || versionInfo.default;
 			_UIAliases[publicName] = _selectedUI.name;
-			console.log('[UIVersion] ' + publicName + ': ', _selectedUI.name);
+			console.log("[UIVersion] " + publicName + ": ", _selectedUI.name);
 		};
 
-		UIController.getUI = function () {
+		UIController.getUI = function(){
 			return _selectedUI;
-		};
+		}
 
 		return UIController;
-	};
+	}
+
+
 
 	/// DEPRECATED
 	/// WILL BE REMOVED AFTER REFACTORING
@@ -95,7 +98,7 @@ define(function (require) {
 			return 0;
 		}
 		return 1;
-	};
+	}
 	UIVersionManager.getWinStatsVersion = function () {
 		if (Configs.get('clientVersionMode') === 'PacketVer') {
 			if (PACKETVER.value >= 20090601) {
@@ -108,7 +111,7 @@ define(function (require) {
 			return 0;
 		}
 		return 1;
-	};
+	}
 	UIVersionManager.getInventoryVersion = function () {
 		if (Configs.get('clientVersionMode') === 'PacketVer') {
 			if (PACKETVER.value >= 20090601) {
@@ -121,7 +124,8 @@ define(function (require) {
 			return 0;
 		}
 		return 1;
-	};
+	}
+
 
 	return UIVersionManager;
 });

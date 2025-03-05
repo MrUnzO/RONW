@@ -652,15 +652,15 @@ define(function (require) {
 
 	function updateCharSlot() {
 		for (let i = 0; i < _maxSlots; ++i) {
-			jQuery(CharSelectV3.ui.find('.char_canvas')[i])
+			jQuery(CharSelectV4.ui.find('.char_canvas')[i])
 				.find('.name')
 				.html(_slots[i] !== undefined ? _slots[i].name : '');
 			if (_slots[i] === undefined) {
 				const slotNum = i;
-				jQuery(CharSelectV3.ui.find('.job_icon')[slotNum]).css('background-image', '');
-				if (CharSelectV3.ui.find('#slot' + slotNum)) {
+				jQuery(CharSelectV4.ui.find('.job_icon')[slotNum]).css('background-image', '');
+				if (CharSelectV4.ui.find('#slot' + slotNum)) {
 					Client.loadFile(DB.INTERFACE_PATH + 'select_character_ver3/img_slot2_normal.bmp', function (dataURI) {
-						CharSelectV3.ui.find('#slot' + slotNum).css('backgroundImage', 'url(' + dataURI + ')');
+						CharSelectV4.ui.find('#slot' + slotNum).css('backgroundImage', 'url(' + dataURI + ')');
 					});
 				}
 				const countdown = document.querySelector('.timedelete.slot' + slotNum); // Adjusted selector
@@ -671,7 +671,7 @@ define(function (require) {
 				}
 			} else {
 				Client.loadFile(DB.INTERFACE_PATH + 'select_character_ver3/img_slot_normal.bmp', function (dataURI) {
-					CharSelectV3.ui.find('#slot' + i).css('backgroundImage', 'url(' + dataURI + ')');
+					CharSelectV4.ui.find('#slot' + i).css('backgroundImage', 'url(' + dataURI + ')');
 				});
 
 				const slotJobIcon = jQuery(CharSelectV4.ui.find('.job_icon')[i]);

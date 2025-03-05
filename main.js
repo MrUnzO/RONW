@@ -9,11 +9,12 @@ const ROConfig = {
 			display: 'Localhost Server',
             desc: "roBrowser's demo server",
             address: '127.0.0.1',
+			// address: 'connect.robrowser.com',
             port: 6900,
             // version: 55,
             // langtype: 5,
             packetver: 20180620,
-            packetKeys: true
+            packetKeys: false
         },
     ],
     version: require('package.json').version,
@@ -22,6 +23,9 @@ const ROConfig = {
 	enableCashShop: false,
 	enableBank: false,
 	enableMapName: false,
+	enableCheckAttendance: false,
+	enableHomunAutoFeed: false,
+	worldMapSettings: {},
     plugins: {},
 };
 /**************************************************************/

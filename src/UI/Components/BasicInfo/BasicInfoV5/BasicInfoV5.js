@@ -143,6 +143,7 @@ define(function(require)
 		});
 
 		this.draggable();
+		this.ui.topDroppable().droppable();
 	};
 
 
@@ -360,7 +361,7 @@ define(function(require)
 					});
 				}.bind(this));
 				break;
-			
+
 			case 'ap':
 				var perc  = Math.floor(val1 * 100 / val2);
 				var color = perc === 100 ? 'red' : 'blue';

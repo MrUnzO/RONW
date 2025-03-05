@@ -251,7 +251,7 @@ define(function( require )
 		} else {
 			$target = jQuery('body');
 		}
-	
+
 		// Append UI content to the target element
 		this.ui.appendTo($target);
 
@@ -343,20 +343,14 @@ define(function( require )
 			if (this !== components[name] && components[name].__active && components[name].needFocus) {
 				zIndex = parseInt(components[name].ui.css('zIndex'), 10);
 				components[name].ui.css('zIndex', list[zIndex-50]);
-				if(components[name].onChangeZIndex){
-					components[name].onChangeZIndex();
-				}
 			}
 		}
 
 		// Push our zIndex at top
 		this.ui.css('zIndex', list.length + 50 - j);
-		if(this.onChangeZIndex){
-			this.onChangeZIndex();
-		}
 	};
 
-	
+
 	/**
 	 * add UI at the top of others
 	 */
