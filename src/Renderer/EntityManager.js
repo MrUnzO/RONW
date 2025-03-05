@@ -1,5 +1,5 @@
 /**
- * Renderer/EntityManager.js
+ * @module Renderer/EntityManager
  *
  * Manage Entity
  *
@@ -7,19 +7,17 @@
  *
  * @author Vincent Thibault
  */
-define(function( require )
-{
+define(function (require) {
 	'use strict';
 
-
 	// Load dependencies
-	var Session        = require('Engine/SessionStorage');
-	var Entity         = require('./Entity/Entity');
+	var Session = require('Engine/SessionStorage');
+	var Entity = require('./Entity/Entity');
 	var SpriteRenderer = require('./SpriteRenderer');
-	var Mouse          = require('Controls/MouseEventHandler');
-	var KEYS           = require('Controls/KeyEventHandler');
-	var PathFinding	   = require('Utils/PathFinding');
-	var Altitude       = require('Renderer/Map/Altitude');
+	var Mouse = require('Controls/MouseEventHandler');
+	var KEYS = require('Controls/KeyEventHandler');
+	var PathFinding = require('Utils/PathFinding');
+	var Altitude = require('Renderer/Map/Altitude');
 
 	var _list = [];
 
@@ -29,13 +27,13 @@ define(function( require )
 	 * @param {number} gid
 	 * @returns {number} position
 	 */
-	function getEntityIndex( gid )
-	{
+	function getEntityIndex(gid) {
 		if (gid < 0) {
 			return -1;
 		}
 
-		var i, count = _list.length;
+		var i,
+			count = _list.length;
 
 		for (i = 0; i < count; ++i) {
 			if (_list[i].GID === gid) {
@@ -46,15 +44,14 @@ define(function( require )
 		return -1;
 	}
 
-
 	/**
 	 * Fetch all entities using a callback
 	 *
 	 * @param {function} callback
 	 */
-	function forEach( callback )
-	{
-		var i, count = _list.length;
+	function forEach(callback) {
+		var i,
+			count = _list.length;
 
 		for (i = 0; i < count; ++i) {
 			if (callback(_list[i]) === false) {
@@ -63,15 +60,13 @@ define(function( require )
 		}
 	}
 
-
 	/**
 	 * Find an Entity and return it
 	 *
 	 * @param {number} gid
 	 * @returns {object} Entity
 	 */
-	function getEntity( gid )
-	{
+	function getEntity(gid) {
 		// Reason for this check:
 		// - Most packets your received is for the main character, so
 		//   this check speed up the process.
@@ -89,33 +84,29 @@ define(function( require )
 		return _list[index];
 	}
 
-
 	/**
 	 * Add or replace entity
 	 *
 	 * @param {object} entity
 	 * @return {object}
 	 */
-	function addEntity( entity )
-	{
-		var index = getEntityIndex( entity.GID );
+	function addEntity(entity) {
+		var index = getEntityIndex(entity.GID);
 		if (index < 0) {
-			index = _list.push( entity ) - 1;
-		}
-		else {
+			index = _list.push(entity) - 1;
+		} else {
 			_list[index].set(entity);
 		}
 
 		return _list[index];
 	}
 
-
 	/**
 	 * Clean up entities from list
 	 */
-	function free()
-	{
-		var i, count = _list.length;
+	function free() {
+		var i,
+			count = _list.length;
 
 		for (i = 0; i < count; ++i) {
 			_list[i].clean();
@@ -124,43 +115,37 @@ define(function( require )
 		_list.length = 0;
 	}
 
-
 	/**
 	 * Remove an entity
 	 * @param {number} gid
 	 */
-	function removeEntity( gid )
-	{
-		var index = getEntityIndex( gid );
+	function removeEntity(gid) {
+		var index = getEntityIndex(gid);
 
 		if (index > -1) {
 			_list[index].clean();
-			_list.splice( index, 1 );
+			_list.splice(index, 1);
 		}
 	}
-
 
 	/**
 	 * @var {Entity} mouse over
 	 */
 	var _over = null;
 
-
 	/**
 	 * Return the entity the mouse is over
 	 */
-	function getOverEntity()
-	{
+	function getOverEntity() {
 		return _over;
 	}
-
 
 	/**
 	 * Set over entity
 	 */
 	var _saveShift = false;
-	function setOverEntity( target )
-	{
+
+	function setOverEntity(target) {
 		var current = _over;
 
 		if (target === current && _saveShift === KEYS.SHIFT) {
@@ -176,37 +161,30 @@ define(function( require )
 		if (target) {
 			_over = target;
 			target.onMouseOver();
-		}
-		else {
+		} else {
 			_over = null;
 		}
 	}
-
 
 	/**
 	 * @var {Entity} target
 	 */
 	var _focus = null;
 
-
 	/**
 	 * Return the entity selected by the user
 	 */
-	function getFocusEntity()
-	{
+	function getFocusEntity() {
 		return _focus;
 	}
-
 
 	/**
 	 * Set over entity
 	 * @param {Entity} entity
 	 */
-	function setFocusEntity( entity )
-	{
+	function setFocusEntity(entity) {
 		_focus = entity;
 	}
-
 
 	/**
 	 * Sort entities by z-Index
@@ -214,10 +192,9 @@ define(function( require )
 	 * @param {Entity} a
 	 * @param {Entity} b
 	 */
-	function sort(  a, b )
-	{
-		var aDepth = a.depth + (a.GID%100) / 1000;
-		var bDepth = b.depth + (b.GID%100) / 1000;
+	function sort(a, b) {
+		var aDepth = a.depth + (a.GID % 100) / 1000;
+		var bDepth = b.depth + (b.GID % 100) / 1000;
 
 		return bDepth - aDepth;
 	}
@@ -226,9 +203,9 @@ define(function( require )
 
 	/**
 	 * Set reverse priority for entity sorting (for supportive skills)
-	 * @param {boolean} true/false
+	 * @param {boolean} v
 	 */
-	function setSupportPicking(v){
+	function setSupportPicking(v) {
 		_supportPriority = v;
 	}
 
@@ -238,10 +215,9 @@ define(function( require )
 	 * @param {Entity} a
 	 * @param {Entity} b
 	 */
-	function sortByPriority( a, b )
-	{
-		var aDepth = a.depth + ((!isNaN(a.GID)) ? a.GID%100 : 0) / 1000;
-		var bDepth = b.depth + ((!isNaN(b.GID)) ? b.GID%100 : 0) / 1000;
+	function sortByPriority(a, b) {
+		var aDepth = a.depth + (!isNaN(a.GID) ? a.GID % 100 : 0) / 1000;
+		var bDepth = b.depth + (!isNaN(b.GID) ? b.GID % 100 : 0) / 1000;
 
 		if (_supportPriority) {
 			aDepth -= Entity.PickingPriority.Support[a.objecttype] * 100;
@@ -254,7 +230,6 @@ define(function( require )
 		return aDepth - bDepth;
 	}
 
-
 	/**
 	 * Render all entities (picking or not)
 	 *
@@ -262,12 +237,11 @@ define(function( require )
 	 * @param {mat4} modelView
 	 * @param {mat4} projection
 	 * @param {object} fog structure
-	 * @param {object} render effect entities? true/false
+	 * @param {object} renderEffects effect entities? true/false
 	 *
 	 * Infos: RO Game doesn't seems to render ambiant and diffuse on Sprites
 	 */
-	function render( gl, modelView, projection, fog, renderEffects )
-	{
+	function render(gl, modelView, projection, fog, renderEffects) {
 		var i, count;
 		var tick = Date.now();
 
@@ -279,17 +253,16 @@ define(function( require )
 		_list.sort(sort);
 
 		// Use program
-		SpriteRenderer.bind3DContext( gl, modelView, projection, fog );
+		SpriteRenderer.bind3DContext(gl, modelView, projection, fog);
 
 		// Rendering
 		for (i = 0, count = _list.length; i < count; ++i) {
-			if((_list[i].objecttype != _list[i].constructor.TYPE_EFFECT && !renderEffects) || (_list[i].objecttype == _list[i].constructor.TYPE_EFFECT && renderEffects)){
+			if ((_list[i].objecttype != _list[i].constructor.TYPE_EFFECT && !renderEffects) || (_list[i].objecttype == _list[i].constructor.TYPE_EFFECT && renderEffects)) {
 				// Remove from list
 				if (_list[i].remove_tick && _list[i].remove_tick + _list[i].remove_delay < tick) {
-
 					// Remove focus
 					var entityFocus = getFocusEntity();
-					if( entityFocus && entityFocus.GID === _list[i].GID ){
+					if (entityFocus && entityFocus.GID === _list[i].GID) {
 						entityFocus.onFocusEnd();
 						setFocusEntity(null);
 					}
@@ -301,25 +274,18 @@ define(function( require )
 					continue;
 				}
 
-				if(_list[i].objecttype == Entity.TYPE_MOB && _list[i].action == _list[i].ACTION.DIE){
-					gl.depthMask(false);
-					_list[i].render( modelView, projection);
-					gl.depthMask(true);
-				}else{
-					_list[i].render( modelView, projection);
-				}		
+				_list[i].render(modelView, projection);
 			}
 		}
 
 		// Clean program
-		SpriteRenderer.unbind( gl );
+		SpriteRenderer.unbind(gl);
 	}
 
 	/**
 	 * Intersect Entities
 	 */
-	function intersect()
-	{
+	function intersect() {
 		var i, count;
 		var entity;
 
@@ -329,7 +295,7 @@ define(function( require )
 		}
 
 		// if dragging just ignore
-		if(window._OBJ_DRAG_){
+		if (window._OBJ_DRAG_) {
 			return;
 		}
 
@@ -343,10 +309,7 @@ define(function( require )
 
 			// No picking on dead entites
 			if ((entity.action !== entity.ACTION.DIE || entity.objecttype === Entity.TYPE_PC) && entity.remove_tick === 0) {
-				if (x > entity.boundingRect.x1 &&
-				    x < entity.boundingRect.x2 &&
-				    y > entity.boundingRect.y1 &&
-				    y < entity.boundingRect.y2) {
+				if (x > entity.boundingRect.x1 && x < entity.boundingRect.x2 && y > entity.boundingRect.y1 && y < entity.boundingRect.y2) {
 					return entity;
 				}
 			}
@@ -361,22 +324,22 @@ define(function( require )
 	 * @param {entity} source entity
 	 * @param {type} entity type to look for
 	 */
-	function getClosestEntity(sourceEntity, type){
+	function getClosestEntity(sourceEntity, type) {
 		var closestEntity = false;
 		var distance = Infinity;
 
-		_list.forEach((entity) => {
-			if( entity.GID !== sourceEntity.GID && entity.objecttype === type && entity.action !== entity.ACTION.DIE && entity.remove_tick === 0 ){
+		_list.forEach(entity => {
+			if (entity.GID !== sourceEntity.GID && entity.objecttype === type && entity.action !== entity.ACTION.DIE && entity.remove_tick === 0) {
 				var dst = Infinity;
-				if( closestEntity ){
+				if (closestEntity) {
 					dst = getPathDistance(sourceEntity, entity);
-					if( dst && dst < distance ){
+					if (dst && dst < distance) {
 						closestEntity = entity;
 						distance = dst;
 					}
 				} else {
 					dst = getPathDistance(sourceEntity, entity);
-					if( dst ){
+					if (dst) {
 						closestEntity = entity;
 						distance = dst;
 					}
@@ -393,43 +356,35 @@ define(function( require )
 	 * @param {entity} from entity
 	 * @param {entity} to entity
 	 */
-	function getPathDistance(fromEntity, toEntity){
-		var out   = [];
-		var count = PathFinding.search(
-			fromEntity.position[0] | 0, fromEntity.position[1] | 0,
-			toEntity.position[0] | 0, toEntity.position[1] | 0,
-			1,
-			out,
-			Altitude.TYPE.WALKABLE
-		);
+	function getPathDistance(fromEntity, toEntity) {
+		var out = [];
+		var count = PathFinding.search(fromEntity.position[0] | 0, fromEntity.position[1] | 0, toEntity.position[0] | 0, toEntity.position[1] | 0, 1, out, Altitude.TYPE.WALKABLE);
 		return count;
 	}
 
 	var EntityManager = {
-		free:                 free,
-		add:                  addEntity,
-		remove:               removeEntity,
-		get:                  getEntity,
-		forEach:              forEach,
+		free: free,
+		add: addEntity,
+		remove: removeEntity,
+		get: getEntity,
+		forEach: forEach,
 
-		getOverEntity:        getOverEntity,
-		setOverEntity:        setOverEntity,
-		getFocusEntity:       getFocusEntity,
-		setFocusEntity:       setFocusEntity,
+		getOverEntity: getOverEntity,
+		setOverEntity: setOverEntity,
+		getFocusEntity: getFocusEntity,
+		setFocusEntity: setFocusEntity,
 
-		getClosestEntity:     getClosestEntity,
+		getClosestEntity: getClosestEntity,
 
-		render:               render,
-		intersect:            intersect,
-		setSupportPicking:    setSupportPicking,
+		render: render,
+		intersect: intersect,
+		setSupportPicking: setSupportPicking,
 	};
-
 
 	/**
 	 * Get access to manager from Entity object
 	 */
 	Entity.Manager = EntityManager;
-
 
 	/**
 	 * Export

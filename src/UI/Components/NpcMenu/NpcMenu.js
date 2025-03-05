@@ -99,6 +99,7 @@ define(function(require)
 
 		switch (event.which) {
 
+			case KEYS.SPACE:	// Same as Enter
 			case KEYS.ENTER:
 				validate.call(this);
 				break;

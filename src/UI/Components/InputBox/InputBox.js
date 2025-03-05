@@ -54,12 +54,10 @@ define(function(require)
 
 
 	/**
-	 * Once in HTML, focus the input
+	 * Input Post-Render callback
+	 * Should append data, focus, select text, etc...
 	 */
-	InputBox.onAppend = function OnAppend()
-	{
-		this.ui.find('input').select();
-	};
+	InputBox.onAppend = function OnAppend() {};
 
 
 	/**
@@ -69,6 +67,7 @@ define(function(require)
 	{
 		this.ui.find('input').val('');
 		this.ui.find('.text').text('');
+		this.ui.find('input').keydown(null);
 		this.overlay.detach();
 	};
 
@@ -118,7 +117,7 @@ define(function(require)
 	 * @param {boolean} is the popup persistent ? false : clicking in any part of the game will remove the input
 	 * @param {string|number} default value to show in the input
 	 */
-	InputBox.setType = function setType( type, isPersistent, defaultVal )
+	InputBox.setType = function setType( type, isPersistent, defaultVal, itemId = null)
 	{
 		this.isPersistent = !!isPersistent;
 
@@ -140,7 +139,6 @@ define(function(require)
 				this.ui.find('input').attr('type', 'text');
 				defaultVal = defaultVal || 0;
 				break;
-
 
 			case 'text':
 				this.ui.removeClass('number');
@@ -165,6 +163,20 @@ define(function(require)
 				this.ui.find('.text').text( DB.getMessage(300) );
 				this.ui.find('input').attr('type', 'password');
 				break;
+			
+			case 'birthdate':
+				this.ui.removeClass('number');
+				this.ui.find('.text').text( DB.getMessage(1815) );
+				this.ui.find('input').attr('type', 'text');
+				break;
+
+			case 'item':
+				this.ui.addClass('number');
+				this.ui.find('.text').text( DB.getItemInfo(itemId).identifiedDisplayName );
+				this.ui.find('input').attr('type', 'text');
+				defaultVal = defaultVal || 0;
+				break;
+
 		}
 
 		if (typeof defaultVal !== 'undefined') {

@@ -20,19 +20,16 @@ define(function( require )
 	var Session       = require('Engine/SessionStorage');
 	var Network       = require('Network/NetworkManager');
 	var PACKETVER  	  = require('Network/PacketVerManager');
-	var PACKETVER        = require('Network/PacketVerManager');
 	var PACKET        = require('Network/PacketStructure');
 	var EntityManager = require('Renderer/EntityManager');
 	var MapRenderer   = require('Renderer/MapRenderer');
 	var UIManager     = require('UI/UIManager');
 	var ChatBox       = require('UI/Components/ChatBox/ChatBox');
-	var MiniMap;
-	if(PACKETVER.value >= 20180124) {
-		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
-	} else {
-		MiniMap          = require('UI/Components/MiniMap/MiniMap');
-	}
 	var PartyUI       = require('UI/Components/PartyFriends/PartyFriends');
+	var WorldMap      = require('UI/Components/WorldMap/WorldMap');
+
+	// Version Dependent UIs
+	var MiniMap = require('UI/Components/MiniMap/MiniMap');
 
 	/**
 	 * Party namespace
@@ -286,6 +283,7 @@ define(function( require )
 		}
 
 		PartyUI.setParty( pkt.groupName, pkt.groupInfo);
+		WorldMap.updatePartyMembers(pkt);
 	}
 
 
@@ -385,10 +383,10 @@ define(function( require )
 	{
 		// Server remove mark with "-1" as position
 		if (pkt.xPos < 0 || pkt.yPos < 0) {
-			MiniMap.removePartyMemberMark( pkt.AID );
+			MiniMap.getUI().removePartyMemberMark( pkt.AID );
 		}
 		else {
-			MiniMap.addPartyMemberMark( pkt.AID, pkt.xPos, pkt.yPos );
+			MiniMap.getUI().addPartyMemberMark( pkt.AID, pkt.xPos, pkt.yPos );
 		}
 	}
 

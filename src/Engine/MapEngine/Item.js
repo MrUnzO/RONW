@@ -17,9 +17,11 @@ define(function( require )
 	 * Load dependencies
 	 */
 	var DB           			 = require('DB/DBManager');
+	var Configs          		 = require('Core/Configs');
 	var EquipLocation			 = require('DB/Items/EquipmentLocation');
 	var Network      			 = require('Network/NetworkManager');
 	var PACKET       			 = require('Network/PacketStructure');
+	var PACKETVER   			 = require('Network/PacketVerManager');
 	var ItemObject   			 = require('Renderer/ItemObject');
 	var Altitude     			 = require('Renderer/Map/Altitude');
 	var Session      			 = require('Engine/SessionStorage');
@@ -29,7 +31,11 @@ define(function( require )
 	var Inventory    			 = require('UI/Components/Inventory/Inventory');
 	var CartItems    			 = require('UI/Components/CartItems/CartItems');
 	var Equipment    			 = require('UI/Components/Equipment/Equipment');
-	var PlayerEquipment    		 = require('UI/Components/PlayerEquipment/PlayerEquipment');
+	var PlayerViewEquip    		 = require('UI/Components/PlayerViewEquip/PlayerViewEquip');
+	if(Configs.get('enableRefineUI') && PACKETVER.value >= 20161012) {
+		var Refine = require('UI/Components/Refine/Refine');
+	}
+	var SwitchEquip	    		 = require('UI/Components/SwitchEquip/SwitchEquip');
 	var Storage                  = require('UI/Components/Storage/Storage');
 	var MakeItemSelection     	 = require('UI/Components/MakeItemSelection/MakeItemSelection');
 	var ItemListWindowSelection  = require('UI/Components/MakeItemSelection/ItemListWindowSelection');
@@ -70,7 +76,9 @@ define(function( require )
 			pkt.count,
 			x,
 			y,
-			z
+			z,
+			pkt.dropeffectmode,
+			pkt.showdropeffect
 		);
 	}
 
@@ -100,9 +108,9 @@ define(function( require )
 		}
 
 		ItemObtain.append();
-		ItemObtain.set(pkt);		
-		
-		var getTextItem = DB.getItemName(pkt);
+		ItemObtain.set(pkt);
+
+		var getTextItem = DB.getItemName(pkt, {showItemOptions: false});
 
 		ChatBox.addText(
 			DB.getMessage(153).replace('%s', getTextItem ).replace('%d', pkt.count ),
@@ -110,7 +118,7 @@ define(function( require )
 			ChatBox.FILTER.ITEM
 		);
 
-		Inventory.addItem(pkt);
+		Inventory.getUI().addItem(pkt);
 	}
 
 
@@ -121,7 +129,7 @@ define(function( require )
 	 */
 	function onInventorySetList( pkt )
 	{
-		Inventory.setItems( pkt.itemInfo || pkt.ItemInfo );
+		Inventory.getUI().setItems( pkt.itemInfo || pkt.ItemInfo );
 	}
 
 
@@ -132,7 +140,7 @@ define(function( require )
 	 */
 	function onIventoryRemoveItem( pkt )
 	{
-		Inventory.removeItem( pkt.Index, pkt.count || pkt.Count || 0);
+		Inventory.getUI().removeItem( pkt.Index, pkt.count || pkt.Count || 0);
 	}
 
 
@@ -144,7 +152,7 @@ define(function( require )
 	function onEquipementTakeOff( pkt )
 	{
 		if (pkt.result) {
-			var item = Equipment.unEquip( pkt.index, pkt.wearLocation);
+			var item = Equipment.getUI().unEquip( pkt.index, pkt.wearLocation);
 
 			if (item) {
 				item.WearState = 0;
@@ -157,15 +165,26 @@ define(function( require )
 				);
 
 				if (!(pkt.wearLocation & EquipLocation.AMMO)) {
-					Inventory.addItem(item);
+					Inventory.getUI().addItem(item);
 				}
 			}
 
-			if (pkt.wearLocation & EquipLocation.HEAD_TOP)    Session.Entity.accessory2 = 0;
-			if (pkt.wearLocation & EquipLocation.HEAD_MID)    Session.Entity.accessory3 = 0;
-			if (pkt.wearLocation & EquipLocation.HEAD_BOTTOM) Session.Entity.accessory  = 0;
-			// if (pkt.wearLocation & EquipLocation.WEAPON)      Session.Entity.weapon     = 0;
-			// if (pkt.wearLocation & EquipLocation.SHIELD)      Session.Entity.shield     = 0;
+			if (pkt.wearLocation & EquipLocation.HEAD_TOP)    Session.Entity.accessory2 = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_HEAD_TOP);
+			if (pkt.wearLocation & EquipLocation.HEAD_MID)    Session.Entity.accessory3 = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_HEAD_MID);
+			if (pkt.wearLocation & EquipLocation.HEAD_BOTTOM) Session.Entity.accessory  = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_HEAD_BOTTOM);
+			if (pkt.wearLocation & EquipLocation.GARMENT)     Session.Entity.robe       = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_ROBE);
+			if (pkt.wearLocation & EquipLocation.WEAPON)      Session.Entity.weapon     = 0;
+			if (pkt.wearLocation & EquipLocation.SHIELD)      Session.Entity.shield     = 0;
+			if (pkt.wearLocation & EquipLocation.COSTUME_HEAD_TOP)    Session.Entity.accessory2 = Equipment.getUI().checkEquipLoc(EquipLocation.HEAD_TOP);
+			if (pkt.wearLocation & EquipLocation.COSTUME_HEAD_MID)    Session.Entity.accessory3 = Equipment.getUI().checkEquipLoc(EquipLocation.HEAD_MID);
+			if (pkt.wearLocation & EquipLocation.COSTUME_HEAD_BOTTOM) Session.Entity.accessory  = Equipment.getUI().checkEquipLoc(EquipLocation.HEAD_BOTTOM);
+			if (pkt.wearLocation & EquipLocation.COSTUME_ROBE)     Session.Entity.robe       = Equipment.getUI().checkEquipLoc(EquipLocation.GARMENT);
+
+			if(PACKETVER.value >= 20170208) { // Remove from Switch Window as well
+				if (!Inventory.getUI().isInEquipSwitchList(pkt.wearLocation)) {
+					SwitchEquip.unEquip( pkt.index, pkt.wearLocation );
+				}
+			}
 		}
 	}
 
@@ -178,20 +197,34 @@ define(function( require )
 	function onItemEquip( pkt )
 	{
 		if (pkt.result == 1) {
-			var item = Inventory.removeItem( pkt.index, 1 );
-			Equipment.equip( item, pkt.wearLocation );
+			var item = Inventory.getUI().removeItem( pkt.index, 1 );
+			Equipment.getUI().equip( item, pkt.wearLocation );
 			ChatBox.addText(
 				DB.getItemName(item) + ' ' + DB.getMessage(170),
 				ChatBox.TYPE.BLUE,
 				ChatBox.FILTER.ITEM
 			);
 
+			// Variables for Headgear Checks
+			var CostumeCheckTop = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_HEAD_TOP);
+			var CostumeCheckMid = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_HEAD_MID);
+			var CostumeCheckBot = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_HEAD_BOTTOM);
+			var CostumeCheckRobe = Equipment.getUI().checkEquipLoc(EquipLocation.COSTUME_ROBE);
+
 			// Display
-			if (pkt.wearLocation & EquipLocation.HEAD_TOP)    Session.Entity.accessory2 = pkt.viewid;
-			if (pkt.wearLocation & EquipLocation.HEAD_MID)    Session.Entity.accessory3 = pkt.viewid;
-			if (pkt.wearLocation & EquipLocation.HEAD_BOTTOM) Session.Entity.accessory  = pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.HEAD_TOP)    Session.Entity.accessory2 = (CostumeCheckTop)  ? CostumeCheckTop  : pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.HEAD_MID)    Session.Entity.accessory3 = (CostumeCheckMid)  ? CostumeCheckMid  : pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.HEAD_BOTTOM) Session.Entity.accessory  = (CostumeCheckBot)  ? CostumeCheckBot  : pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.GARMENT)     Session.Entity.robe       = (CostumeCheckRobe) ? CostumeCheckRobe : pkt.viewid;
+
 			if (pkt.wearLocation & EquipLocation.WEAPON)      Session.Entity.weapon     = pkt.viewid;
 			if (pkt.wearLocation & EquipLocation.SHIELD)      Session.Entity.shield     = pkt.viewid;
+
+			// costume override regular equips
+			if (pkt.wearLocation & EquipLocation.COSTUME_HEAD_TOP)    Session.Entity.accessory2  = pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.COSTUME_HEAD_MID)    Session.Entity.accessory3  = pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.COSTUME_HEAD_BOTTOM) Session.Entity.accessory   = pkt.viewid;
+			if (pkt.wearLocation & EquipLocation.COSTUME_ROBE)        Session.Entity.robe        = pkt.viewid;
 		}
 
 		// Fail to equip
@@ -213,7 +246,7 @@ define(function( require )
 	{
 		if (!pkt.hasOwnProperty('AID') || Session.Entity.GID === pkt.AID) {
 			if (pkt.result) {
-				Inventory.updateItem( pkt.index, pkt.count );
+				Inventory.getUI().updateItem( pkt.index, pkt.count );
 			}
 			else {
 				// should we show a msg in chatbox ?
@@ -224,22 +257,6 @@ define(function( require )
 		}
 	}
 
-
-	/**
-	 * Do we show equipment to others ?
-	 *
-	 * @param {object} pkt - PACKET_ZC_CONFIG_NOTIFY
-	 */
-	function onConfigEquip( pkt )
-	{
-		Equipment.setEquipConfig( pkt.bOpenEquipmentWin );
-		ChatBox.addText(
-			DB.getMessage(1358 + (pkt.bOpenEquipmentWin ? 1 : 0) ),
-			ChatBox.TYPE.INFO,
-			ChatBox.FILTER.ITEM
-		);
-	}
-	
 	/**
 	 * View other player's equipment - CZ_EQUIPWIN_MICROSCOPE
 	 *
@@ -251,17 +268,17 @@ define(function( require )
 		pkt.AID = AID;
 		Network.sendPacket(pkt);
 	}
-	
+
 	/**
 	 * Show other player's equipment
 	 *
 	 * @param {object} pkt - ZC_EQUIPWIN_MICROSCOPE
 	 */
-	function onShowPlayerEquipment( pkt ){
-		//console.log(PlayerEquipment);
-		//PlayerEquipment.append();
-		//PlayerEquipment.show();
-		//PlayerEquipment.set();
+	function onShowPlayerEquip( pkt ){
+		PlayerViewEquip.getUI().append();
+		PlayerViewEquip.getUI().setTitleBar(pkt.characterName);
+		PlayerViewEquip.getUI().setEquipmentData(pkt.ItemInfo);
+		PlayerViewEquip.getUI().setChar2Render(pkt);
 	}
 
 
@@ -272,8 +289,8 @@ define(function( require )
 	 */
 	function onArrowEquipped( pkt )
 	{
-		var item = Inventory.getItemByIndex( pkt.index );
-		Equipment.equip( item, EquipLocation.AMMO);
+		var item = Inventory.getUI().getItemByIndex( pkt.index );
+		Equipment.getUI().equip( item, EquipLocation.AMMO);
 	}
 
 
@@ -288,7 +305,7 @@ define(function( require )
 	 *
 	 * @param {number} card index
 	 */
-	Inventory.onUseCard = function onUseCard(index)
+	function onUseCard(index)
 	{
 		_cardComposition = index;
 		var pkt          = new PACKET.CZ.REQ_ITEMCOMPOSITION_LIST();
@@ -308,7 +325,7 @@ define(function( require )
 			return;
 		}
 
-		var card = Inventory.getItemByIndex(_cardComposition);
+		var card = Inventory.getUI().getItemByIndex(_cardComposition);
 
 		ItemSelection.append();
 		ItemSelection.setList(pkt.ITIDList);
@@ -335,8 +352,8 @@ define(function( require )
 	{
 		switch (pkt.result) {
 			case 0: // success
-				var item = Inventory.removeItem(pkt.equipIndex, 1);
-				var card = Inventory.removeItem(pkt.cardIndex,  1);
+				var item = Inventory.getUI().removeItem(pkt.equipIndex, 1);
+				var card = Inventory.getUI().removeItem(pkt.cardIndex,  1);
 
 				if (item) {
 					for (var i = 0; i < 4; ++i) {
@@ -345,7 +362,7 @@ define(function( require )
 							break;
 						}
 					}
-					Inventory.addItem(item);
+					Inventory.getUI().addItem(item);
 				}
 				break;
 
@@ -362,19 +379,37 @@ define(function( require )
 	 */
 	function onRefineResult( pkt )
 	{
-		var item = Inventory.removeItem( pkt.itemIndex, 1);
-		if (item) {
-			item.RefiningLevel = pkt.RefiningLevel;
-			Inventory.addItem(item);
-		}
+		// Check if refine UI is enabled and packet version is >= 20161012
+		if (Configs.get('enableRefineUI') && PACKETVER.value >= 20161012) {
+			Refine.onRefineResult(pkt);
+		} else {
+			var item = Inventory.getUI().removeItem( pkt.itemIndex, 1);
+			if (item) {
+				item.RefiningLevel = pkt.RefiningLevel;
+				Inventory.getUI().addItem(item);
+			}
 
-		// TODO: effect ?
-		switch (pkt.result) {
-			case 0: // success
-			case 1: // failure
-			case 2: // downgrade
+			switch (pkt.result) {
+				case 0: // success
+					ChatBox.addText(DB.getMessage(498),	// Upgrade success!!
+						ChatBox.TYPE.BLUE,
+						ChatBox.FILTER.PUBLIC_LOG
+					);
+					break;
+				case 1: // failure
+					ChatBox.addText(DB.getMessage(499),	// Upgrade failed!!
+						ChatBox.TYPE.BLUE,
+						ChatBox.FILTER.PUBLIC_LOG
+					);
+					break;
+				case 2: // downgrade
+					ChatBox.addText(DB.getMessage(1537), // Is now refining the value lowered
+						ChatBox.TYPE.BLUE,
+						ChatBox.FILTER.PUBLIC_LOG
+					);
+					break;
+			}
 		}
-
 	}
 
 	/**
@@ -414,7 +449,7 @@ define(function( require )
 		Network.sendPacket( pkt );
 	};
 
-	Inventory.reqMoveItemToCart = function reqMoveItemToCart( index, count )
+	function reqMoveItemToCart( index, count )
 	{
 		if (count <= 0) {
 			return;
@@ -426,6 +461,17 @@ define(function( require )
 		Network.sendPacket( pkt );
 	};
 
+	Inventory.reqMoveItemToWriteRodex = function reqMoveItemToWriteRodex( index, count )
+	{
+		if (count <= 0) {
+			return;
+		}
+
+		var pkt   = new PACKET.CZ.REQ_ADD_ITEM_RODEX();
+		pkt.index = index;
+		pkt.count = count;
+		Network.sendPacket( pkt );
+	};
 
 	function onCartItemAdded( pkt )
 	{
@@ -511,15 +557,29 @@ define(function( require )
 	 */
 	function onMakeitem_List( pkt )
 	{
-		if (!pkt.idList.length) {
-			return;
+		let itemList;
+		let makeType;
+		if (PACKETVER.value >= 20211103) {
+			if (!pkt.items.length) {
+				return;
+			}
+			itemList = pkt.items.map(item => item.itemId);
+			makeType = pkt.makeItem;
+		} else {
+			if (!pkt.idList.length) {
+				return;
+			}
+			itemList = pkt.idList;
+			makeType = itemList[0]; // First item is mktype for older versions
+			itemList = itemList.slice(1); // Remove mktype from item list
 		}
+
 		MakeItemSelection.append();
-		MakeItemSelection.setCookingList(pkt.idList);
+		MakeItemSelection.setCookingList(itemList, makeType);
 		MakeItemSelection.setTitle(DB.getMessage(425));
 		MakeItemSelection.onIndexSelected = function(index, material, mkType) {
 			if (index >= -1) {
-				var pkt   = new PACKET.CZ.REQ_MAKINGITEM();
+				var pkt = new PACKET.CZ.REQ_MAKINGITEM();
 				pkt.mkType = mkType;
 				pkt.id = index;
 				Network.sendPacket(pkt);
@@ -533,7 +593,11 @@ define(function( require )
 	 * @param {object} pkt - PACKET.ZC.EXTEND_BODYITEM_SIZE
 	 */
 	function onBodyItemSize(pkt) {
-        // TODO add it to inventory
+        if (pkt) {
+			var baselimit = 100;	// Base Limit
+			var newlimit = baselimit + pkt.type;
+			Inventory.getUI().ui.find('.mcnt').text(newlimit);
+		}
     }
 
 	/**
@@ -557,7 +621,7 @@ define(function( require )
 	function onItemListNormal(pkt) {
 		switch (pkt.invType) {
 			case 0:
-				Inventory.setItems( pkt.itemInfo || pkt.ItemInfo );
+				Inventory.getUI().setItems( pkt.itemInfo || pkt.ItemInfo );
 				break;
 			case 1:
 				CartItems.setItems( pkt.itemInfo || pkt.ItemInfo );
@@ -579,7 +643,7 @@ define(function( require )
 	function onItemListEquip(pkt) {
 		switch (pkt.invType) {
 			case 0:
-				Inventory.setItems( pkt.itemInfo || pkt.ItemInfo );
+				Inventory.getUI().setItems( pkt.itemInfo || pkt.ItemInfo );
 				break;
 			case 1:
 				CartItems.setItems( pkt.itemInfo || pkt.ItemInfo );
@@ -591,7 +655,76 @@ define(function( require )
 				throw new Error("[PACKET.ZC.SPLIT_SEND_ITEMLIST_NORMAL] - Unknown invType '" + pkt.invType + "'.");
 		}
 	}
-	
+
+
+	/**
+	 * Updates the favorite status of an item in the Inventory UI
+	 *
+	 * @param {object} pkt - PACKET.ZC.ITEM_FAVORITE
+	 * pkt.favorite:
+	 *  0 = move item to personal tab
+	 * 	1 = move item to normal tab
+	 */
+	function onFavItemList(pkt) {
+		if(pkt) {
+			// So if favorite is 0, we send 1 to change item.PlaceETCTab to 1
+			var isfavitem = pkt.favorite ? 0 : 1;
+			Inventory.getUI().updatePlaceETCTab(pkt.index, isfavitem);
+		}
+	}
+
+
+	/**
+	 * Received Switch Equip List
+	 */
+	function onSwitchEquipList(pkt) {
+		if (pkt && pkt.ItemInfo) {
+			pkt.ItemInfo.forEach(function(item) {
+				if (Inventory.getUI().getItemByIndex(item.index)) {
+					Inventory.getUI().addItemtoSwitch(item.index);
+				}
+			});
+		}
+	}
+
+
+	/**
+	 * Add item to Switch Equip
+	 */
+	function onSwitchEquipAdd(pkt) {
+		if (pkt) {
+			switch (pkt.flag) {
+				case 0:
+					Inventory.getUI().addItemtoSwitch(pkt.index);
+					break;
+				case 1:
+				case 2:
+					break;
+				default:
+					throw new Error("[PACKET.ZC.REQ_WEAR_SWITCHEQUIP_ADD_RESULT] - Error!");
+			}
+		}
+	}
+
+	/**
+	 * Remove item to Switch Equip
+	 */
+	function onSwitchEquipRemove(pkt) {
+		if (pkt) {
+			switch (pkt.flag) {
+				case 0:
+					Inventory.getUI().removeItemFromSwitch(pkt.index);
+					break;
+				case 1:
+					break;
+				case 2:
+					break;
+				default:
+					throw new Error("[PACKET.ZC.REQ_WEAR_SWITCHEQUIP_ADD_RESULT] - Error!");
+			}
+		}
+	}
+
 	/**
 	 * Initialize
 	 */
@@ -619,7 +752,7 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.CART_EQUIPMENT_ITEMLIST3,        onCartSetList );
 		Network.hookPacket( PACKET.ZC.CART_EQUIPMENT_ITEMLIST4,        onCartSetList );
 		Network.hookPacket( PACKET.ZC.CART_EQUIPMENT_ITEMLIST5,        onCartSetList );
-		Network.hookPacket( PACKET.ZC.NOTIFY_CARTITEM_COUNTINFO,        onCartSetInfo );
+		Network.hookPacket( PACKET.ZC.NOTIFY_CARTITEM_COUNTINFO,       onCartSetInfo );
 		Network.hookPacket( PACKET.ZC.EQUIPMENT_ITEMLIST,     onInventorySetList );
 		Network.hookPacket( PACKET.ZC.EQUIPMENT_ITEMLIST2,    onInventorySetList );
 		Network.hookPacket( PACKET.ZC.EQUIPMENT_ITEMLIST3,    onInventorySetList );
@@ -635,7 +768,6 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.DELETE_ITEM_FROM_CART,  onCartRemoveItem );
 		Network.hookPacket( PACKET.ZC.USE_ITEM_ACK,           onItemUseAnswer );
 		Network.hookPacket( PACKET.ZC.USE_ITEM_ACK2,          onItemUseAnswer );
-		Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY,          onConfigEquip );
 		Network.hookPacket( PACKET.ZC.EQUIP_ARROW,            onArrowEquipped );
 		Network.hookPacket( PACKET.ZC.ITEMCOMPOSITION_LIST,   onItemCompositionList );
 		Network.hookPacket( PACKET.ZC.ACK_ITEMCOMPOSITION,    onItemCompositionResult );
@@ -653,10 +785,24 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.SPLIT_SEND_ITEMLIST_NORMAL,       onItemListNormal );
 		Network.hookPacket( PACKET.ZC.SPLIT_SEND_ITEMLIST_EQUIP,        onItemListEquip );
 		Network.hookPacket( PACKET.ZC.SPLIT_SEND_ITEMLIST_EQUIP2,        onItemListEquip );
-		
-		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE,        onShowPlayerEquipment );
-		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE2,       onShowPlayerEquipment );
-		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V5,     onShowPlayerEquipment );
-		
+
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE,        onShowPlayerEquip );
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V2,     onShowPlayerEquip );
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V3,     onShowPlayerEquip );
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V4,     onShowPlayerEquip );
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V5,     onShowPlayerEquip );
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V6,     onShowPlayerEquip );
+		Network.hookPacket( PACKET.ZC.EQUIPWIN_MICROSCOPE_V7,     onShowPlayerEquip );
+
+		/* Favorite Tab */
+		Network.hookPacket( PACKET.ZC.ITEM_FAVORITE,			  onFavItemList );
+
+		/* Switch Equipment*/
+		Network.hookPacket( PACKET.ZC.SEND_SWAP_EQUIPITEM_INFO,   		 	onSwitchEquipList );
+		Network.hookPacket( PACKET.ZC.REQ_WEAR_SWITCHEQUIP_ADD_RESULT,   	onSwitchEquipAdd );
+		Network.hookPacket( PACKET.ZC.REQ_WEAR_SWITCHEQUIP_REMOVE_RESULT,   onSwitchEquipRemove );
+
+		Inventory.getUI().onUseCard            = onUseCard;
+		Inventory.getUI().reqMoveItemToCart	   = reqMoveItemToCart;
 	};
 });

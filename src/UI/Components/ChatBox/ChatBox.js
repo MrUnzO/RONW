@@ -30,7 +30,7 @@ define(function(require)
 	var ContextMenu        = require('UI/Components/ContextMenu/ContextMenu');
 	var htmlText           = require('text!./ChatBox.html');
 	var cssText            = require('text!./ChatBox.css');
-	var ProcessCommand     = require('Controls/ProcessCommand');
+	var Commands     = require('Controls/ProcessCommand');
 	var ChatBoxSettings  = require('UI/Components/ChatBoxSettings/ChatBoxSettings');
 
 
@@ -75,7 +75,7 @@ define(function(require)
 		tabs: [],
 		tabOption: [],
 		activeTab: 0
-		
+
 	}, 1.0);
 
 
@@ -101,7 +101,7 @@ define(function(require)
 		ADMIN:    1 << 9,
 		MAIL:     1 << 10,
 	};
-	
+
 	ChatBox.FILTER = {
 		PUBLIC_LOG:		0,
 		PUBLIC_CHAT:	1,
@@ -146,7 +146,7 @@ define(function(require)
 	ChatBox.lastTabID = -1;
 	ChatBox.tabCount = 0;
 	ChatBox.activeTab = 0;
-	
+
 	ChatBox.tabs = [];
 
 	/**
@@ -334,11 +334,11 @@ define(function(require)
 		this.ui.find('.chat-function .battleopt').click(function(){
 			ChatBox.toggleChatBattleOption();
 		});
-		
+
 		// Init settings window as well
 		ChatBoxSettings.append();
-		
-		
+
+
 		if(_preferences.tabs.length > 0 && _preferences.tabs.length == _preferences.tabOption.length){
 			// Load saved tabs
 			for(var i = 0; i < _preferences.tabs.length; i++){
@@ -346,7 +346,7 @@ define(function(require)
 					ChatBox.addNewTab(_preferences.tabs[i].name, _preferences.tabOption[i]);
 				}
 			}
-			
+
 			// Switch to last active tab
 			if(ChatBox.tabs[_preferences.activeTab]){
 				this.switchTab(_preferences.activeTab);
@@ -373,15 +373,17 @@ define(function(require)
 				ChatBox.FILTER.BATTLEFIELD,
 				ChatBox.FILTER.CLAN
 			]); // Public Log
-				
+
 			ChatBox.addNewTab(DB.getMessage(1292)); // Battle Log
-			
+
 			// switch to first
 			ChatBox.switchTab(firstTab);
 		}
-		
+
 		// dialog box size
 		makeResizableDiv()
+		
+		Commands.add('savechat', 'Saves current chat tab to txt file.', function(){ ChatBox.saveCurrentTabChat(); return; }, ['sc'], false );
 	};
 
 
@@ -417,16 +419,16 @@ define(function(require)
 	ChatBox.removeTab = function removeTab() {
 		this.ui.find('table.header tr td.tab[data-tab="'+ this.activeTab +'"]').remove();
 		this.ui.find('.body .content[data-content="'+ this.activeTab +'"]').remove();
-		
+
 		var tabName= '';
 		var _elem = this.ui.find('table.header tr td.tab');
  		_elem = this.ui.find('table.header tr td.tab')[_elem.length - 1];
-		
+
 		// Use delete instead of splice to avoid ID messup and make our life eastier.
 		delete ChatBoxSettings.tabOption[this.activeTab];
 		delete this.tabs[this.activeTab];
 		this.tabCount--;
-		
+
 		ChatBox.switchTab(_elem.dataset.tab);
 
 		tabName = this.ui.find('.header tr td div.on input').val();
@@ -434,7 +436,7 @@ define(function(require)
 	}
 
 	ChatBox.addNewTab = function addNewTab(name, settings){
-		
+
 		// Default settings
 		if(!name){
 			name = 'New Tab';
@@ -465,23 +467,23 @@ define(function(require)
 				ChatBox.FILTER.CLAN
 			];
 		}
-		
+
 		var tabName = name;
 		var tabID = ++this.lastTabID;
-		
+
 		var tab = {};
 		tab.id = tabID;
 		tab.name = tabName;
-		
+
 		// Store prev height
 		//var height = this.ui.find('.contentwrapper').height();
-		
+
 		// Remove current active state
 		this.ui.find('table.header tr td.tab div')
 			.removeClass('on');
 		this.ui.find('.body .content')
 			.removeClass('active');
-		
+
 		// Add new elements as active
 		this.ui.find('table.header tr .opttab').before(`
 			<td class="tab" data-tab="${tabID}">
@@ -490,43 +492,46 @@ define(function(require)
 				</div>
 			</td>
 		`);
-		
+
 		this.ui.find('table.header tr td.tab[data-tab="'+tabID+'"] div input').on('change', function(){
 			ChatBox.tabs[tabID].name = this.value;
 		});
-		
+
 		this.ui.find('.body .contentwrapper').append(
 			`<div class="content active" data-content="${tabID}"></div>`
 		);
 
 		ChatBoxSettings.tabOption[tabID] = settings;
-		
+
 		this.tabs[tabID] = tab;
 		this.activeTab = tabID;
-		
+
 		this.tabCount++;
-		
+
 		ChatBoxSettings.updateTab(this.activeTab, tabName);
-		
+
 		return tabID;
 	}
 
 	ChatBox.switchTab = function switchTab(tabID){
 		var tabName = '';
-		
+
 		this.ui.find('table.header tr td.tab div')
 			.removeClass('on');
 		this.ui.find('.body .content')
 			.removeClass('active');
-		
+
 		this.activeTab = tabID;
 
 		this.ui.find('table.header tr td.tab[data-tab="'+ this.activeTab +'"] div')
 			.addClass('on');
 		this.ui.find('.body .content[data-content="'+ this.activeTab +'"]')
 			.addClass('active');
-		
+
 		tabName = this.ui.find('.header tr td div.on input').val();
+
+		this.ui.find('.content')[tabID].scrollTop = this.ui.find('.content')[tabID].scrollHeight;
+
 		ChatBoxSettings.updateTab(this.activeTab, tabName);
 	}
 
@@ -539,7 +544,7 @@ define(function(require)
 		this.ui.find('.input .message').focus();
 
 		var content = this.ui.find('.content.active');
-		content.scrollTop = content.scrollHeight;
+		content[0].scrollTop = content[0].scrollHeight;
 	};
 
 
@@ -557,13 +562,13 @@ define(function(require)
 		_preferences.magnet_bottom = this.magnet.BOTTOM;
 		_preferences.magnet_left = this.magnet.LEFT;
 		_preferences.magnet_right = this.magnet.RIGHT;
-		
+
 		_preferences.tabs = this.tabs;
 		_preferences.tabOption = ChatBoxSettings.tabOption;
 		_preferences.activeTab = this.activeTab;
-		
+
 		_preferences.save();
-		
+
 		this.lastTabID = -1;
 		this.activeTab = 0;
 	};
@@ -674,6 +679,8 @@ define(function(require)
 			// Update chat height
 			case KEYS.F10:
 				this.updateHeight(false);
+				// scroll down when resize
+				this.ui.find('.content')[this.activeTab].scrollTop = this.ui.find('.content')[this.activeTab].scrollHeight;
 				break;
 
 			// Send message
@@ -738,7 +745,7 @@ define(function(require)
 			Client.loadFile(DB.INTERFACE_PATH + 'basic_interface/chatmode_'+chatmode+'.bmp', function( data ){
 				ChatBox.ui.find('.chat-function .chatmode').css('backgroundImage', 'url('+ data +')');
 			});
-			
+
 			return;
 		}
 
@@ -757,7 +764,7 @@ define(function(require)
 
 		// Command
 		if (text[0] === '/') {
-			ProcessCommand.call(this, text.substr(1) );
+			Commands.processCommand.call(this, text.substr(1) );
 			return;
 		}
 
@@ -780,7 +787,7 @@ define(function(require)
 		if(isNaN(filterType)){
 			filterType = ChatBox.FILTER.PUBLIC_LOG;
 		}
-		
+
 		this.tabs.forEach((tab, TabNum) => {
 			var content = this.ui.find('.content[data-content="'+ TabNum +'"]');
 			var chatTabOption = ChatBoxSettings.tabOption[TabNum];
@@ -830,15 +837,14 @@ define(function(require)
 
 
 			// If there is too many line, remove the older one
-
-			var list = this.ui.find('.content');
-			if (list.length > MAX_MSG) {
+			if (content[0].childElementCount > MAX_MSG) {
 				var element, matches;
 				var i, count;
 
 				//Check if theres any blob url object to be released from buffer (Check Controls/ScreenShot.js)
-				element = list.eq(0);
-				matches = element.html().match(/(blob:[^"]+)/g);
+				element = content[0].firstElementChild;
+
+				matches = element.innerHTML.match(/(blob:[^"]+)/g);
 
 				if (matches) {
 					for (i = 0, count = matches.length; i < count; ++i) {
@@ -849,8 +855,30 @@ define(function(require)
 				element.remove();
 			}
 
-			// Always put the scroll at the bottom
-			content[0].scrollTop = content[0].scrollHeight;
+
+			// Function to determine whether to scroll down or not
+			function shouldScrollDown(container, messageHeight, height) {
+				// Tolerance could be a few pixels to account for nearly at the bottom situations
+				const tolerance = 5;
+
+				// The user is considered at the bottom if the current scrollTop, plus the height of the container,
+				// plus any potential new message height, is within the tolerance of the total scrollable height.
+				const atBottom = container.scrollTop + height + messageHeight >= container.scrollHeight - tolerance;
+
+				// If there is no scrollbar (content does not overflow), or the user is at the bottom, return true.
+				if (height >= container.scrollHeight || atBottom) {
+					return true;
+				}
+
+				// In other cases, return false as we do not want to auto-scroll down
+				return false;
+			}
+
+			const lastMessageHeight = this.ui.find('.content[data-content="'+ TabNum +'"] > div:last-child')[0].scrollHeight;
+
+			if (shouldScrollDown(content[0], lastMessageHeight, content.height())) {
+				content[0].scrollTop = content[0].scrollHeight;
+			}
 		});
 	};
 
@@ -863,12 +891,12 @@ define(function(require)
 		var HeightList = [ 0, 0, MAGIC_NUMBER, MAGIC_NUMBER*2, MAGIC_NUMBER*3, MAGIC_NUMBER*4, MAGIC_NUMBER*5 ];
 		_heightIndex   = (_heightIndex + 1) % HeightList.length;
 
-		var $content   = this.ui.find('.contentwrapper');
+		var content   = this.ui.find('.contentwrapper');
 		var height     = HeightList[ _heightIndex ];
 		var top        = parseInt( this.ui.css('top'), 10);
 
-		this.ui.css('top', top - (height - $content.height()) );
-		$content.height(height);
+		this.ui.css('top', top - (height - content.height()) );
+		content.height(height);
 
 		// Don't remove UI
 		if (_heightIndex === 0 && AlwaysVisible) {
@@ -892,7 +920,7 @@ define(function(require)
 				break;
 		}
 
-		$content[0].scrollTop = $content[0].scrollHeight;
+		content[this.activeTab].scrollTop = content[this.activeTab].scrollHeight;
 	};
 
 
@@ -904,6 +932,30 @@ define(function(require)
 	ChatBox.saveNickName = function saveNickName( pseudo )
 	{
 		_historyNickName.push(pseudo);
+	};
+	
+	/**
+	 * Save chat from current tab into a file.
+	 */
+	ChatBox.saveCurrentTabChat = function saveCurrentTabChat(){
+		
+		var timezone, date, data, url;
+		
+		// Create a date
+		var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+    	var localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
+		localISOTime = localISOTime.replace('T', ' ');
+		timezone = (new Date().getTimezoneOffset() / 60);
+		date     = localISOTime + ' (GMT ' + (timezone > 0 ? '-' : '+') + Math.abs(timezone).toString() + ')'; //GMT
+		
+		data = '<html><head><title>Chat History</title><style> body { background-color: DarkSlateGray; } </style></head><body>'
+		data += this.ui.find('.content[data-content="'+ ChatBox.activeTab +'"]')[0].outerHTML;
+		data += '</body></html>';
+		
+		// We create a local file
+		url = window.URL.createObjectURL(new Blob([data], {type: 'text/plain'}));
+		
+		ChatBox.addText('Chat History ['+ ChatBox.tabs[ChatBox.activeTab].name +'] ' + date + ' can be saved by <a style="color:#F88" download="ChatHistory ['+ ChatBox.tabs[ChatBox.activeTab].name +'] (' + date.replace('/', '-') + ').html" href="'+ url +'" target="_blank">clicking here</a>.', ChatBox.TYPE.PUBLIC, ChatBox.FILTER.PUBLIC_LOG, null, true);
 	};
 
 
@@ -1008,7 +1060,7 @@ define(function(require)
 		let original_mouse_y = 0;
 		for (let i = 0;i < resizers.length; i++) {
 			const currentResizer = resizers[i];
-			
+
 			currentResizer.addEventListener('mousedown', function(e) {
 				e.preventDefault();
 				original_height = ChatBox.ui.find('.contentwrapper').height();
@@ -1026,8 +1078,10 @@ define(function(require)
 						ChatBox.ui.find('.contentwrapper').height(height);
 					}
 				}
+				// scroll down when resize
+				ChatBox.ui.find('.content')[ChatBox.activeTab].scrollTop = ChatBox.ui.find('.content')[ChatBox.activeTab].scrollHeight;
 			}
-		  
+
 			function fixHeight(height){
 				return  Math.floor(height/MAGIC_NUMBER)*MAGIC_NUMBER;
 			}

@@ -635,7 +635,7 @@
 
 				if(data.from == 'Inventory')
 				{
-					Inventory.removeItem(
+					Inventory.getUI().removeItem(
 						item.index,
 						parseInt(count, 10 )
 					);		
@@ -656,7 +656,7 @@
 
 		
 		if(data.from == 'Inventory'){
-			Inventory.removeItem( item.index, 1 );						
+			Inventory.getUI().removeItem( item.index, 1 );						
 		}
 		Mail.parseMailWinopen(1); // remove item
 

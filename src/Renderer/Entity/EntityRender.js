@@ -42,6 +42,7 @@ define( function( require )
 
 		// Always process walk. It will decide it for itself if it is walking or not and handles it accordingly.
 		this.walkProcess();
+		this.entitiesWalkProcess(); // falcon/wug
 
 		this.boundingRect.x1 =  Infinity;
 		this.boundingRect.y1 = -Infinity;
@@ -104,10 +105,12 @@ define( function( require )
 
 			// Display UI
 			if (entity.life.display)	entity.life.render( _matrix );
+			if (entity.emblem.display)  entity.emblem.render( _matrix );
 			if (entity.display.display) entity.display.render( _matrix );
 			if (entity.dialog.display)  entity.dialog.render( _matrix );
 			if (entity.cast.display)	entity.cast.render( _matrix );
 			if (entity.room.display)	entity.room.render( _matrix );
+			if (entity.signboard.display)	entity.signboard.render( _matrix );
 		};
 	}();
 
@@ -237,6 +240,10 @@ define( function( require )
 
 			SpriteRenderer.position.set(this.position);
 
+			// Everything right after the shadow should also be adjusted in height to ensure the sprites are above the shadow
+			if (this.objecttype === Entity.TYPE_PC || this.objecttype === Entity.TYPE_MOB || this.objecttype === Entity.TYPE_NPC || this.objecttype === Entity.TYPE_MERC) {
+				SpriteRenderer.position[2] = SpriteRenderer.position[2] + .1;
+			}
 
 			// Shield is behind on some position, seems to be hardcoded by the client
 			if (this.objecttype === Entity.TYPE_PC && this.shield && behind) {
@@ -247,6 +254,11 @@ define( function( require )
 			if(direction > 2 && direction < 6)
 			{
 				renderElement( this, this.files.body, 'body', _position, true );
+
+				// Draw Robe
+				if (this.robe > 0) {
+					renderElement( this, this.files.robe, 'robe', _position, true);
+				}
 
 			 	if(Session.Playing == true && this.hasCart == true)
 				{
@@ -275,12 +287,16 @@ define( function( require )
   					renderElement( this, this.files.cart_shadow, 'cartshadow', _position, false);
 					renderElement( this, this.files.cart[cartidx], 'cart', _position, false);
 				}
+				// Draw Robe
+				if (this.robe > 0) {
+					renderElement( this, this.files.robe, 'robe', _position, true);
+				}
 				renderElement( this, this.files.body, 'body', _position, true );
 			}
 
 
 
-			if (this.objecttype === Entity.TYPE_PC) {
+			if (this.objecttype === Entity.TYPE_PC || this.objecttype === Entity.TYPE_MERC) {
 				// Draw Head
 				renderElement( this, this.files.head, 'head', _position, false);
 
@@ -290,12 +306,12 @@ define( function( require )
 				}
 
 				// Hat Middle
-				if (this.accessory3 > 0 && this.accessory3 !== this.accessory2 && this.accessory3 !== this.accessory) {
+				if (this.accessory3 > 0 && this.accessory3 !== this.accessory) { // accessory already rendered, avoid render same item again
 					renderElement( this, this.files.accessory3, 'head', _position, false);
 				}
 
 				// Hat Top
-				if (this.accessory2 > 0 && this.accessory2 !== this.accessory) {
+				if (this.accessory2 > 0 && this.accessory2 !== this.accessory && this.accessory2 !== this.accessory3) { // accessory and accessory3 already rendered, avoid render same item again
 					renderElement( this, this.files.accessory2, 'head', _position, false);
 				}
 
@@ -333,7 +349,7 @@ define( function( require )
 			var isBlendModeOne = false;
 
 			// Nothing to render
-			if (!files.spr || !files.act)
+			if (typeof files === 'undefined' || !files.spr || !files.act)
 			{
 				return;
 			}
@@ -484,6 +500,7 @@ define( function( require )
 		var animation = entity.animation;
 		var animCount = act.animations.length;
 		var animSize  = animCount;
+		var animLastIndex = animSize-1;
 		var isIdle	= (action === ACTION.IDLE || action === ACTION.SIT);
 		var delay	 = getAnimationDelay(type, entity, act);
 		var headDir   = 0;
@@ -502,15 +519,24 @@ define( function( require )
 		}
 
 		// Get rid of doridori
-		if (type === 'body' && entity.objecttype === entity.constructor.TYPE_PC && isIdle) {
-			return entity.headDir;
+
+		if ((type === 'body' || type === 'robe') &&
+			(entity.objecttype === entity.constructor.TYPE_PC ||
+			 entity.objecttype === entity.constructor.TYPE_MERC) &&
+			isIdle) {
+			if(entity.headDir <= animLastIndex)
+				return entity.headDir;
+			return animLastIndex;
 		}
 
 		// If hat/hair, divide to 3 since there is doridori include
 		// TODO: fixed, just on IDLE and SIT ?
-		if (type === 'head' && isIdle) {
+		if (type === 'head' &&
+			(entity.objecttype === entity.constructor.TYPE_PC ||
+			 entity.objecttype === entity.constructor.TYPE_MERC) &&
+			isIdle) {
 			animCount = Math.floor(animCount / 3);
-			headDir   = entity.headDir;
+			headDir = entity.headDir <= animLastIndex ? entity.headDir : animLastIndex;
 		}
 
 		// Don't play, so stop at the current frame.

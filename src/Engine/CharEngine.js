@@ -17,6 +17,7 @@ define(function( require )
 	// Load modules
 	var jQuery     = require('Utils/jquery');
 	var DB         = require('DB/DBManager');
+	var Configs    = require('Core/Configs');
 	var Events     = require('Core/Events');
 	var Sound      = require('Audio/SoundManager');
 	var BGM        = require('Audio/BGM');
@@ -27,27 +28,19 @@ define(function( require )
 	var PACKET     = require('Network/PacketStructure');
 	var UIManager  = require('UI/UIManager');
 	var Background = require('UI/Background');
-	var CharSelect = require('UI/Components/CharSelect/CharSelect');
-	var CharSelect2 = require('UI/Components/CharSelect2/CharSelect2');
-	var CharSelectV2 = require('UI/Components/CharSelectV2/CharSelectV2');
-	var CharSelectV3 = require('UI/Components/CharSelectV3/CharSelectV3');
-	var CharCreate;
-	if (PACKETVER.value >= 20180124) {
-		CharCreate = require('UI/Components/CharCreatev2/CharCreatev2');
-	} else {
-		CharCreate = require('UI/Components/CharCreate/CharCreate');
-	}
 	var PincodeWindow = require('UI/Components/PincodeWindow/PincodeWindow');
 	var InputBox   = require('UI/Components/InputBox/InputBox');
 	var Renderer   = require('Renderer/Renderer');
 	var getModule  = require;
 
+	// Version Dependent UIs
+	var CharSelect = require('UI/Components/CharSelect/CharSelect');
+	var CharCreate = require('UI/Components/CharCreate/CharCreate');
 
 	/**
 	 * @var {object} server data
 	 */
 	var _server = null;
-
 
 	/**
 	 * @var {number} where to create character ?
@@ -55,9 +48,24 @@ define(function( require )
 	var _creationSlot = 0;
 
 	/**
-	 * @var {number} Select Character UI
+	 * @var {number} times attempted to provide pin code.
 	 */
-	var charSelectNum = 0;
+	var _pincodeAttempts = 0;
+
+	/**
+	 * @var {boolean} are we currently attempting to authenticate a pin code reset?
+	 */
+	var _inAuthPincodeReset = false;
+
+	/**
+	 * @var {boolean} are we resetting a pincode?
+	 */
+	var _resettingPincode = false;
+
+	/**
+	 * @var {boolean} are we creating a pincode?
+	 */
+	var _creatingPincode = false;
 
 	/*
 	 * Connect to char server
@@ -66,11 +74,17 @@ define(function( require )
 	{
 		BGM.play('01.mp3');
 
+		//Notify MapEngine if it needs UI update
+		MapEngine.needsUIVerUpdate = (_server !== server);
+
 		// Storing variable
 		_server = server;
 
 		// Connect to char server
-		Network.connect( Network.utils.longToIP( server.ip ), server.port, function( success ){
+		var forceAddress = Configs.get('forceUseAddress');
+		var server_info = Configs.getServer();
+		var ip = forceAddress ? server_info.address : Network.utils.longToIP( server.ip );
+		Network.connect( ip, server.port, function( success ){
 
 			// Fail to connect...
 			if (!success) {
@@ -97,6 +111,10 @@ define(function( require )
 			});
 		});
 
+		//Select UI version
+		CharSelect.selectUIVersion();
+		CharCreate.selectUIVersion();
+
 		// Hook packets
 		Network.hookPacket( PACKET.HC.ACCEPT_ENTER_NEO_UNION,        onConnectionAccepted );
 		Network.hookPacket( PACKET.HC.REFUSE_ENTER,                  onConnectionRefused );
@@ -114,17 +132,6 @@ define(function( require )
 		Network.hookPacket( PACKET.HC.NOTIFY_ACCESSIBLE_MAPNAME,     onMapUnavailable);
 		Network.hookPacket( PACKET.HC.SECOND_PASSWD_LOGIN, 			 onPincodeCheckSuccess);
 		Network.hookPacket( PACKET.HC.DELETE_CHAR3_RESERVED,		 onRequestCharDel);
-
-		//Select Character Window
-		if (PACKETVER.value >= 20180124) {
-			charSelectNum = 3; //Renewal UI with Sex + Race + Stylist
-		} else if (PACKETVER.value >= 20141016) {
-			charSelectNum = 2; //Renewal UI with Sex + Race (Not yet implemented)
-		} else if (PACKETVER.value >= 20100720 && PACKETVER.value <= 20100727) {
-			charSelectNum = 1; //Old UI with mapname
-		} else {
-			charSelectNum = 0; //Old UI
-		}
 	}
 
 	/**
@@ -169,49 +176,48 @@ define(function( require )
 		Session.Playing = false;
     	Session.hasCart = false;
 
+		// Reset Announcement component
+		var Announce = UIManager.getComponent('Announce');
+		if (Announce) {
+			Announce.remove();
+		}
+
+		// Reset MapName component
+		var MapName = UIManager.getComponent('MapName');
+		if (MapName) {
+			MapName.remove();
+			MapName.resetState();
+		}
+
 		UIManager.getComponent('WinLoading').remove();
 
 		// Initialize window
-		switch (charSelectNum)
-		{
-			case 1:
-				CharSelect2.onExitRequest = onExitRequest;
-				CharSelect2.onConnectRequest = onConnectRequest;
-				CharSelect2.onCreateRequest = onCreateRequest;
-				CharSelect2.onDeleteRequest = onDeleteRequest;
-				CharSelect2.append();
-				CharSelect2.setInfo(pkt);
-				break;
-			case 2:
-				CharSelectV2.onExitRequest = onExitRequest;
-				CharSelectV2.onConnectRequest = onConnectRequest;
-				CharSelectV2.onCreateRequest = onCreateRequest;
-				CharSelectV2.onDeleteRequest = onDeleteRequest;
-				CharSelectV2.append();
-				CharSelectV2.setInfo(pkt);
-				//PincodeWindow.onExitRequest = onExitRequest;
-				//PincodeWindow.onPincodeCheckRequest = onPincodeCheckRequest;
-				//PincodeWindow.append();
-				break;
-			case 3:
-				CharSelectV3.onExitRequest = onExitRequest;
-				CharSelectV3.onConnectRequest = onConnectRequest;
-				CharSelectV3.onCreateRequest = onCreateRequest;
-				CharSelectV3.onDeleteRequest = onDeleteRequest;
-				CharSelectV3.onDeleteReqDelay = onDeleteReqDelay;
-				CharSelectV3.onCancelDeleteRequest = onCancelDeleteRequest;
-				CharSelectV3.append();
-				CharSelectV3.setInfo(pkt);
-				break;
-			default:
-				CharSelect.onExitRequest = onExitRequest;
-				CharSelect.onConnectRequest = onConnectRequest;
-				CharSelect.onCreateRequest = onCreateRequest;
-				CharSelect.onDeleteRequest = onDeleteRequest;
-				CharSelect.append();
-				CharSelect.setInfo(pkt);
-				break;
-		}
+		var ChSel = CharSelect.getUI();
+		ChSel.onExitRequest = onExitRequest;
+		ChSel.onConnectRequest = onConnectRequest;
+		ChSel.onCreateRequest = onCreateRequest;
+		ChSel.onDeleteRequest = onDeleteRequest;
+		ChSel.onDeleteReqDelay = onDeleteReqDelay;
+		ChSel.onCancelDeleteRequest = onCancelDeleteRequest;
+		ChSel.append();
+		ChSel.setInfo(pkt);
+
+		 /**
+		  * In PACKETVERs < 20180124 that support pincode auth, we're supposed to
+		  * show a button that will ask the server to perform it.
+		  * In this case, the server will send the pincode request packet.
+		  *
+		  * Later PACKETVERs have the char server handle this on initial connection,
+		  * so the button was removed, and we don't have to do anything here.
+		  */
+		//if (PACKETVER.value < 20180124 && PACKETVER.value >= 20110309) {
+			//sendPincodeRequest(); // This causes duplicate packets, please fix
+
+			/**
+			 * TODO: rAthena says this button was removed with PACKETVER >= 20180124. See also: rathena/src/char/char.hpp
+			 * Need to find out where this button is supposed to be and place it on the correct screen.
+			 */
+		//}
 	}
 
 
@@ -247,46 +253,32 @@ define(function( require )
 			'ok',
 			function(){
 				UIManager.getComponent('WinLoading').remove();
-				switch (charSelectNum)
-				{
-					case 1:
-						CharSelect2.append();
-						break;
-					case 2:
-						CharSelectV2.append();
-						break;
-					case 3:
-						CharSelectV3.append();
-						break;
-					default:
-						CharSelect.append();
-						break;
-				}
+				CharSelect.getUI().append();
 			},
 			true
 		);
 	}
-	  
+
 	/**
 	 * Char Delete Request Result
 	 */
 	function onRequestCharDel (pkt) {
-		
+
 		if (!pkt)
 			return;
 
 		// Just pass the packet info
-		CharSelectV3.reqdeleteAnswer(pkt);
+		CharSelect.getUI().reqdeleteAnswer(pkt);
 	}
 
 	/**
 	 * Char Delete Request Cancel
 	 */
 	function onCancelDeleteRequest ( charID ) {
-		
+
 		if (charID === 0)
 			return;
-		
+
 		var pkt = new PACKET.CH.DELETE_CHAR3_CANCEL();
 		pkt.GID = charID;
 		Network.sendPacket(pkt);
@@ -301,7 +293,7 @@ define(function( require )
 	{
 		if (!charID)
 		return;
-		
+
 		var pkt = new PACKET.CH.DELETE_CHAR3_RESERVED();
 		pkt.GID = charID;
 		Network.sendPacket(pkt);
@@ -315,7 +307,7 @@ define(function( require )
 	function onDeleteRequest( charID )
 	{
 		var _ui_box;
-		var _email;
+		var _inputValue;
 		var _overlay;
 		var _time_end;
 		var _render = false;
@@ -327,12 +319,12 @@ define(function( require )
 			if (PACKETVER.value > 20100803) {
 				var pkt = new PACKET.CH.DELETE_CHAR3();
 				pkt.GID = charID;
-				pkt.Birth = _email.substring(2);	// Server only needs the 6 digits
+				pkt.Birth = _inputValue.substring(2);	// Server only needs the 6 digits
 				Network.sendPacket(pkt);
 			} else {
 				var pkt = new PACKET.CH.DELETE_CHAR();
 				pkt.GID = charID;
-				pkt.key = _email;
+				pkt.key = _inputValue;
 				Network.sendPacket(pkt);
 			}
 		}
@@ -346,11 +338,11 @@ define(function( require )
 			onDeleteAnswer({ ErrorCode: -2});
 		}
 
-		// Ask the mail
+		// Ask the mail/birthdate
 		function onOk(){
 			InputBox.append();
-			if (PACKETVER.value > 20100803) {
-				InputBox.setType('date', true);
+			if (PACKETVER.value >= 20100803) {
+				InputBox.setType('birthdate', true);
 			} else {
 				InputBox.setType('mail', true);
 			}
@@ -364,12 +356,12 @@ define(function( require )
 		_ui_box  = UIManager.showPromptBox( DB.getMessage(19), 'ok', 'cancel', onOk, onCancel);
 		_overlay = jQuery('<div/>').addClass('win_popup_overlay').appendTo('body');
 
-		// Submit the mail
-		function onSubmit(email){
-			_email = email;
+		// Submit the mail/birthdate
+		function onSubmit(input){
+			_inputValue = input;
 			InputBox.remove();
 			_ui_box.remove();
-			
+
 			if (PACKETVER.value < 20180124) {	// Not sure which date should we not use this loading delete anymore
 				// Stop rendering...
 				_ui_box = UIManager.showMessageBox( DB.getMessage(296).replace('%d',10), 'cancel', function(){
@@ -446,20 +438,7 @@ define(function( require )
 		} else { // Birthday deletion result
 			var result = typeof( pkt.Result ) === 'undefined' ? -1 : pkt.Result;
 		}
-		switch (charSelectNum) {
-			case 1:
-				CharSelect2.deleteAnswer(result);
-				break;
-			case 2:
-				CharSelectV2.deleteAnswer(result);
-				break;
-			case 3:
-				CharSelectV3.deleteAnswer(result);
-				break;
-			default:
-				CharSelect.deleteAnswer(result);
-				break;
-		}
+		CharSelect.getUI().deleteAnswer(result);
 	}
 
 
@@ -470,41 +449,17 @@ define(function( require )
 	 */
 	function onCreateRequest( index )
 	{
+		var ChSel = CharSelect.getUI();
+		var ChCre = CharCreate.getUI();
 		_creationSlot = index;
-		switch (charSelectNum) {
-			case 1:
-				CharSelect2.remove();
-				break;
-			case 2:
-				CharSelectV2.remove();
-				break;
-			case 3:
-				CharSelectV3.remove();
-				break;
-			default:
-				CharSelect.remove();
-				break;
-		}
-		CharCreate.setAccountSex( Session.Sex );
-		CharCreate.onCharCreationRequest = onCharCreationRequest;
-		CharCreate.onExitRequest = function(){
-			CharCreate.remove();
-			switch (charSelectNum) {
-				case 1:
-					CharSelect2.append();
-					break;
-				case 2:
-					CharSelectV2.append();
-					break;
-				case 3:
-					CharSelectV3.append();
-					break;
-				default:
-					CharSelect.append();
-					break;
-			}
+		ChSel.remove();
+		ChCre.setAccountSex( Session.Sex );
+		ChCre.onCharCreationRequest = onCharCreationRequest;
+		ChCre.onExitRequest = function(){
+			ChCre.remove();
+			ChSel.append();
 		};
-		CharCreate.append();
+		ChCre.append();
 	}
 
 
@@ -537,7 +492,7 @@ define(function( require )
 			pkt.Dex  = Dex;
 			pkt.Luk  = Luk;
 		}
-		else if ( ( PACKET.value >= 20120307 ) && ( PACKET.value < 20151001 ) ) {
+		else if ( ( PACKETVER.value >= 20120307 ) && ( PACKETVER.value < 20151001 ) ) {
 			pkt = new PACKET.CH.MAKE_CHAR2();
 		}
 		else {
@@ -562,25 +517,10 @@ define(function( require )
 	 */
 	function onCreationSuccess( pkt )
 	{
-		CharCreate.remove();
-		switch (charSelectNum) {
-			case 1:
-				CharSelect2.addCharacter(pkt.charinfo);
-				CharSelect2.append();
-				break;
-			case 2:
-				CharSelectV2.addCharacter(pkt.charinfo);
-				CharSelectV2.append();
-				break;
-			case 3:
-				CharSelectV3.addCharacter(pkt.charinfo);
-				CharSelectV3.append();
-				break;
-			default:
-				CharSelect.addCharacter(pkt.charinfo);
-				CharSelect.append();
-				break;
-		}
+		CharCreate.getUI().remove();
+		var ChSel = CharSelect.getUI();
+		ChSel.addCharacter(pkt.charinfo);
+		ChSel.append();
 	}
 
 
@@ -605,8 +545,16 @@ define(function( require )
 		UIManager.showMessageBox( DB.getMessage(msg_id), 'ok' );
 	}
 
-	function onPincodeCheckRequest(pincode)
-	{
+	function sendPincodeRequest() {
+		var pkt;
+
+		pkt = new PACKET.CH.PINCODE_REQUEST();
+		pkt.AID = Session.AID;
+
+		Network.sendPacket(pkt);
+	}
+
+        function onPincodeCheckRequest(pincode) {
 		var pkt;
 
 		pkt = new PACKET.CH.PINCODE_CHECK();
@@ -616,8 +564,171 @@ define(function( require )
 		Network.sendPacket(pkt);
 	}
 
+	function onPincodeCreate(pincode, bad) {
+		var pkt;
+
+		_creatingPincode = true;
+
+		pkt = new PACKET.CH.PINCODE_FIRST_PIN();
+		pkt.AID = Session.AID;
+		pkt.PINCODE = pincode;
+
+		Network.sendPacket(pkt);
+	}
+
+	function onPincodeReset(oldpin, newpin) {
+		var pkt;
+
+		_inAuthPincodeReset = false;
+		_resettingPincode = true;
+
+		pkt = new PACKET.CH.PINCODE_CHANGE();
+		pkt.AID = Session.AID;
+		pkt.OLD_PINCODE = oldpin;
+		pkt.NEW_PINCODE = newpin;
+
+		Network.sendPacket(pkt);
+	}
+
+	function onAuthPincodeReset(oldpin, newpin) {
+		_inAuthPincodeReset = true;
+		onPincodeCheckRequest(oldpin);
+	}
+
+	function onUserPincodeResetReq() {
+		_pincodeAttempts = 0;
+		PincodeWindow.onPincodeReset = onPincodeReset;
+	}
+
 	function onPincodeCheckSuccess(pkt) {
+		if(!PincodeWindow.__active && pkt.State == 0){
+			console.log("Pincode is disabled.");
+			return;
+		}
+
 		PincodeWindow.remove();
+
+		if (PACKETVER.value < 20110309) {
+			console.log("Pincode packet sent from server, but PACKETVER is too old. Ignoring.");
+			return;
+        }
+		PincodeWindow.onPincodeCheckRequest = onPincodeCheckRequest;
+		PincodeWindow.onUserPincodeResetReq = onUserPincodeResetReq;
+		PincodeWindow.onExitRequest = function(){
+			_pincodeAttempts = 0;
+			_inAuthPincodeReset = false;
+			_resettingPincode = false;
+			_creatingPincode = false;
+			PincodeWindow.resetUI();
+			PincodeWindow.remove();
+			onExitRequest();
+		}
+
+		/*
+		 * Pincode
+		 *
+		 * S 08b8 <AID>.L <data>.4B - check PIN
+		 * S 08c5 <AID>.L <data>.4B - request for PIN button ?
+		 * S 08be <AID>.L <old>.4B <new>.4B - change PIN
+		 * S 08ba <AID>.L <new>.4B - set PIN
+		 * R 08b9 <seed>.L <AID>.L <state>.W
+		 *	State:
+		 *	0 = pin is correct OR pincode feature is disabled
+		 *	1 = ask for pin - client sends 0x8b8
+		 *	2 = create new pin - client sends 0x8ba
+		 *	3 = pin must be changed - client 0x8be
+		 *	4 = create new pin ?? - client sends 0x8ba
+		 *	5 = client shows msgstr(1896)
+		 *	6 = client shows msgstr(1897) Unable to use your KSSN number
+		 *	7 = char select window shows a button - client sends 0x8c5
+		 *	8 = pincode was incorrect
+		 */
+		switch (pkt.State) {
+			case 7: // Pin is correct on PACKETVERs < 20180124.
+				if (PACKETVER.value >= 20180124) {
+					console.log("PINCODE: Received invalid state from server for configured PACKETVER: " + pkt.State + ". Aborting, please fix your PACKETVER in the config.");
+					PincodeWindow.onExitRequest();
+				}
+			case 0: // pin is correct
+				_pincodeAttempts = 0;
+				if (_inAuthPincodeReset === true) {
+					PincodeWindow.onPincodeReset = onPincodeReset;
+					PincodeWindow.onOldPincodeCheckResult(true);
+                                } else {
+					if (_creatingPincode === true) {
+						_creatingPincode = false;
+						UIManager.showMessageBox( DB.getMessage( 1889 ), 'ok' );
+					}
+					if (_resettingPincode === true) {
+						_resettingPincode = false;
+						UIManager.showMessageBox( DB.getMessage( 1891 ), 'ok' );
+					}
+					PincodeWindow.resetUI();
+					var ChSel = CharSelect.getUI();
+					ChSel.setUIEnabled(true);
+                                }
+				break;
+			case 1: // ask for pin
+                                var ChSel = CharSelect.getUI();
+                                ChSel.setUIEnabled(false);
+				PincodeWindow.selectInput(0);
+				if (_pincodeAttempts < 3) {
+					PincodeWindow.clearPin();
+					PincodeWindow.setUserSeed(pkt.Seed);
+					PincodeWindow.append();
+				} else {
+					PincodeWindow.onExitRequest(); // Failed authentication.
+				}
+				break;
+			case 2: // create new pin
+			case 4: // create new pin ??
+				var ChSel = CharSelect.getUI();
+				ChSel.setUIEnabled(false);
+				UIManager.showMessageBox( DB.getMessage( 1900 ), 'ok' );
+				PincodeWindow.selectInput(0);
+				PincodeWindow.setUserSeed(pkt.Seed);
+				PincodeWindow.onPincodeCheckRequest = onPincodeCreate;
+				PincodeWindow.append();
+				break;
+			case 3: // pin must be changed
+				var ChSel = CharSelect.getUI();
+				ChSel.setUIEnabled(false);
+				if (_pincodeAttempts < 3) {
+					UIManager.showMessageBox( DB.getMessage( 2345 ), 'ok' );
+					PincodeWindow.setUserSeed(pkt.Seed);
+					PincodeWindow.onPincodeReset = onPincodeReset;
+					PincodeWindow.onParentPincodeResetReq();
+					PincodeWindow.append();
+				} else {
+					PincodeWindow.onExitRequest(); // Failed authentication.
+				}
+				break;
+			case 5: // client shows msgstr(1896)
+			case 6: // client shows msgstr(1897) Unable to use your KSSN number
+			case 8: // pincode was incorrect
+				if (_creatingPincode === true) {
+					UIManager.showMessageBox( DB.getMessage( 1893 ), 'ok' );
+				} else {
+					UIManager.showMessageBox( DB.getMessage( ((pkt.State == 5) ? 1895 : ((pkt.State == 6) ? 1896 : 1892)) ), 'ok' );
+				}
+				_pincodeAttempts++;
+				if (_pincodeAttempts < 3) {
+					PincodeWindow.resetPins();
+					PincodeWindow.setUserSeed(pkt.Seed);
+					if (_inAuthPincodeReset === true) {
+						_inAuthPincodeReset = false;
+						PincodeWindow.onOldPincodeCheckResult(false);
+					}
+					PincodeWindow.append();
+				} else {
+					PincodeWindow.onExitRequest(); // Failed authentication.
+				}
+				break;
+			default:
+				console.log("PINCODE: Received unknown state from server: " + pkt.State);
+				PincodeWindow.append();
+				break;
+		}
 	}
 
 	/**
@@ -630,20 +741,7 @@ define(function( require )
 		// Play sound
 		Sound.play('\xB9\xF6\xC6\xB0\xBC\xD2\xB8\xAE.wav');
 
-		switch (charSelectNum) {
-			case 1:
-				CharSelect2.remove();
-				break;
-			case 2:
-				CharSelectV2.remove();
-				break;
-			case 3:
-				CharSelectV3.remove();
-				break;
-			default:
-				CharSelect.remove();
-				break;
-		}
+		CharSelect.getUI().remove();
 		UIManager.getComponent('WinLoading').append();
 		Session.Character = entity;
 
@@ -690,27 +788,6 @@ define(function( require )
 	 * S 08d4 <from>.W <to>.W <unk>.W
 	 * R 08d5 <len>.W <success>.W <unk>.W
 	 */
-
-	/*
-	 * Pincode
-	 *
-	 * S 08b8 <AID>.L <data>.4B - check PIN
-	 * S 08c5 <AID>.L <data>.4B - request for PIN button ?
-	 * S 08be <AID>.L <old>.4B <new>.4B - change PIN
-	 * S 08ba <AID>.L <new>.4B - set PIN
-	 * R 08b9 <seed>.L <AID>.L <state>.W
-	 *	State:
-	 *	0 = pin is correct
-	 *	1 = ask for pin - client sends 0x8b8
-	 *	2 = create new pin - client sends 0x8ba
-	 *	3 = pin must be changed - client 0x8be
-	 *	4 = create new pin ?? - client sends 0x8ba
-	 *	5 = client shows msgstr(1896)
-	 *	6 = client shows msgstr(1897) Unable to use your KSSN number
-	 *	7 = char select window shows a button - client sends 0x8c5
-	 *	8 = pincode was incorrect
-	 */
-
 
 	/**
 	 * Export

@@ -26,6 +26,8 @@ define(function()
 		UserLevel:   0,
 		Sex:         0,
 		LangType:    0,
+		ServerName:  null,
+		ratesInfo:	 null,
 
 		Character:   null,
 		Entity:      null,
@@ -37,6 +39,8 @@ define(function()
 		moveAction:  null,
 
 		zeny:        0,
+		weight:      0,
+		max_weight:  0,
 
 		petId:       0,
 		pet:		{},
@@ -57,5 +61,29 @@ define(function()
 		
 		autoFollow:       false,
 		autoFollowTarget: null,
+		
+		ping: {
+			pingTime: 0,
+			pongTime: 0,
+			returned: false,
+			value: 0,
+		},
+		
+		serverTick: 0,
+
+		mapState:  {
+			property        : 0,
+			type            : 0,
+			flag            : 0,
+			isPVPZone       : false,
+			isAgitZone      : false,
+			isPVP           : false,
+			isGVG           : false,
+			isSiege         : false,
+			isNoLockOn      : false,
+			showPVPCounter  : false,
+			showBFCounter   : false,
+			isBattleField   : false,
+		},
 	};
 });

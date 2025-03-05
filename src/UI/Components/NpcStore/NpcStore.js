@@ -51,7 +51,10 @@ define(function(require)
 	NpcStore.Type = {
 		BUY:  0,
 		SELL: 1,
-		VENDING_STORE: 2
+		VENDING_STORE: 2,
+		BUYING_STORE: 3,
+		MARKETSHOP: 4,
+		BARTER_MARKET: 5
 	};
 
 
@@ -71,6 +74,16 @@ define(function(require)
 			height: 7
 		},
 		outputWindow: {
+			x:    100 + 280 + 10,
+			y:    100 + (7*32) - (2*32),
+			height: 2
+		},
+		AvailableItemsWindow: {
+			x:    100 + 280 + 10,
+			y:    100 + (4*32) - (2*32),
+			height: 2
+		},
+		PurchaseResult: {
 			x:    100 + 280 + 10,
 			y:    100 + (7*32) - (2*32),
 			height: 2
@@ -105,12 +118,12 @@ define(function(require)
 		var ui           = this.ui;
 		var InputWindow  = ui.find('.InputWindow');
 		var OutputWindow = ui.find('.OutputWindow');
+		var AvailableItemsWindow = ui.find('.AvailableItemsWindow');
+		var PurchaseResult = ui.find('.PurchaseResult');
 
 		if (PACKETVER.value >= 20131223) {
 			ui.find('.btn.cancel').click(function(){
-				NpcStore.remove();
-				var pkt  = new PACKET.CZ.NPC_TRADE_QUIT();
-				Network.sendPacket(pkt);
+				NpcStore.closeStore();
 			});
 		} else {
 			ui.find('.btn.cancel').click(this.remove.bind(this));
@@ -123,6 +136,8 @@ define(function(require)
 		// Resize
 		InputWindow.find('.resize').mousedown(function(){ onResize(InputWindow); });
 		OutputWindow.find('.resize').mousedown(function(){ onResize(OutputWindow); });
+		AvailableItemsWindow.find('.resize').mousedown(function(){ onResize(AvailableItemsWindow); });
+		PurchaseResult.find('.resize').mousedown(function(){ onResize(PurchaseResult); });
 
 		// Items options
 		ui.find('.content')
@@ -144,8 +159,14 @@ define(function(require)
 		// Hacky drag drop
 		this.draggable.call({ui: InputWindow },  InputWindow.find('.titlebar'));
 		this.draggable.call({ui: OutputWindow }, OutputWindow.find('.titlebar'));
-		this.ui.find('.InputWindow, .OutputWindow').topDroppable({drop: onDrop}).droppable();
+		this.draggable.call({ui: AvailableItemsWindow }, AvailableItemsWindow.find('.titlebar'));
+		this.draggable.call({ui: PurchaseResult }, PurchaseResult.find('.titlebar'));
+		this.ui.find('.InputWindow, .OutputWindow, .AvailableItemsWindow, .PurchaseResult').topDroppable({drop: onDrop}).droppable();
 
+		// MarketShop close
+		ui.find('.btn.ok').click(function(){
+			NpcStore.closeStore();
+		})
 	};
 
 
@@ -156,9 +177,13 @@ define(function(require)
 	{
 		var InputWindow  = this.ui.find('.InputWindow');
 		var OutputWindow = this.ui.find('.OutputWindow');
+		var AvailableItemsWindow = this.ui.find('.AvailableItemsWindow');
+		var PurchaseResult = this.ui.find('.PurchaseResult');
 
 		InputWindow.css({  top:  _preferences.inputWindow.y,  left: _preferences.inputWindow.x });
 		OutputWindow.css({ top:  _preferences.outputWindow.y, left: _preferences.outputWindow.x });
+		AvailableItemsWindow.css({ top:  _preferences.AvailableItemsWindow.y, left: _preferences.AvailableItemsWindow.x });
+		PurchaseResult.css({ top:  _preferences.PurchaseResult.y, left: _preferences.PurchaseResult.x });
 
 		Client.loadFile(DB.INTERFACE_PATH + 'checkbox_' + (_preferences.select_all ? 1 : 0) + '.bmp', function(data){
 			this.ui.find('.selectall:first').css('backgroundImage', 'url('+ data +')');
@@ -166,6 +191,8 @@ define(function(require)
 
 		resize( InputWindow.find('.content'),  _preferences.inputWindow.height );
 		resize( OutputWindow.find('.content'), _preferences.outputWindow.height );
+		resize( AvailableItemsWindow.find('.content'), _preferences.AvailableItemsWindow.height );
+		resize( PurchaseResult.find('.content'), _preferences.PurchaseResult.height );
 
 		// Seems like "EscapeWindow" is execute first, push it before.
 		var events = jQuery._data( window, 'events').keydown;
@@ -180,6 +207,8 @@ define(function(require)
 	{
 		var InputWindow  = this.ui.find('.InputWindow');
 		var OutputWindow = this.ui.find('.OutputWindow');
+		var AvailableItemsWindow = this.ui.find('.AvailableItemsWindow');
+		var PurchaseResult = this.ui.find('.PurchaseResult');
 
 		_input.length    = 0;
 		_output.length   = 0;
@@ -191,6 +220,14 @@ define(function(require)
 		_preferences.outputWindow.x      = parseInt( OutputWindow.css('left'), 10);
 		_preferences.outputWindow.y      = parseInt( OutputWindow.css('top'), 10);
 		_preferences.outputWindow.height = OutputWindow.find('.content').height() / 32 | 0;
+
+		_preferences.AvailableItemsWindow.x      = parseInt( AvailableItemsWindow.css('left'), 10);
+		_preferences.AvailableItemsWindow.y      = parseInt( AvailableItemsWindow.css('top'), 10);
+		_preferences.AvailableItemsWindow.height = AvailableItemsWindow.find('.content').height() / 32 | 0;
+
+		_preferences.PurchaseResult.x      = parseInt( PurchaseResult.css('left'), 10);
+		_preferences.PurchaseResult.y      = parseInt( PurchaseResult.css('top'), 10);
+		_preferences.PurchaseResult.height = PurchaseResult.find('.content').height() / 32 | 0;
 
 		_preferences.save();
 
@@ -214,9 +251,8 @@ define(function(require)
 			this.remove();
 			event.stopImmediatePropagation();
 
-			if (PACKETVER.value >= 20131223) { 
-				var pkt  = new PACKET.CZ.NPC_TRADE_QUIT();
-				Network.sendPacket(pkt);
+			if (PACKETVER.value >= 20131223) {
+				NpcStore.StoreClosePacket(_type);
 			}
 
 			return false;
@@ -235,18 +271,32 @@ define(function(require)
 	{
 		switch (type) {
 			case NpcStore.Type.BUY:
-				this.ui.find('.WinSell, .WinVendingStore, .WinCash').hide();
+			case NpcStore.Type.MARKETSHOP:
+				this.ui.find('.WinSell, .WinVendingStore, .WinCash, .WinBuyingStore, .AvailableItemsWindow, .PurchaseResult').hide();
 				this.ui.find('.WinBuy').show();
 				break;
 
 			case NpcStore.Type.SELL:
-				this.ui.find('.WinBuy, .WinVendingStore, .WinCash').hide();
+				this.ui.find('.WinBuy, .WinVendingStore, .WinCash, .WinBuyingStore, .AvailableItemsWindow, .PurchaseResult').hide();
 				this.ui.find('.WinSell').show();
 				break;
 
 			case NpcStore.Type.VENDING_STORE:
-				this.ui.find('.WinBuy, .WinSell, .WinCash').hide();
+				this.ui.find('.WinBuy, .WinSell, .WinCash, .WinBuyingStore, .AvailableItemsWindow, .PurchaseResult').hide();
 				this.ui.find('.WinVendingStore').show();
+				break;
+
+			case NpcStore.Type.BUYING_STORE:
+				this.ui.find('.WinBuy, .WinSell, .WinCash, .WinVendingStore, .PurchaseResult').hide();
+				this.ui.find('.WinBuyingStore, .AvailableItemsWindow').show();
+				this.ui.find('.content').css('height','160px');
+				this.ui.find('.contentAvailable').css('height','65px');
+				break;
+
+			case NpcStore.Type.BARTER_MARKET:
+				this.ui.find('.WinSell, .WinVendingStore, .WinCash, .WinBuyingStore, .AvailableItemsWindow, .PurchaseResult').hide();
+				this.ui.find('.WinBuy').show();
+				this.ui.find('.total').hide();
 				break;
 		}
 
@@ -262,7 +312,7 @@ define(function(require)
 	NpcStore.setList = function setList( items )
 	{
 		var i, count;
-		var it, item, out, content;
+		var it, item, out, content, availableContent;
 
 		this.ui.find('.content').empty();
 		this.ui.find('.total .result').text(0);
@@ -270,11 +320,60 @@ define(function(require)
 		_input.length  = 0;
 		_output.length = 0;
 		content        = this.ui.find('.InputWindow .content');
-
+		availableContent = this.ui.find('.AvailableItemsWindow .content');
 		switch (_type) {
 
 			case NpcStore.Type.BUY:
 			case NpcStore.Type.VENDING_STORE:
+			case NpcStore.Type.MARKETSHOP:
+				for (i = 0, count = items.length; i < count; ++i) {
+					if (!('index' in items[i])) {
+						items[i].index = i;
+					}
+					items[i].count        = items[i].count || Infinity;
+					items[i].IsIdentified = true;
+					out                   = jQuery.extend({}, items[i]);
+					out.count             = 0;
+
+					addItem( content, items[i]);
+
+					_input[items[i].index]  = items[i];
+					_output[items[i].index] = out;
+
+				}
+				break;
+			case NpcStore.Type.BUYING_STORE:
+				for (i = 0, count = items.length; i < count; ++i) {
+					if (!('index' in items[i])) {
+						items[i].index = i;
+					}
+					items[i].count        = items[i].count || Infinity;
+					items[i].IsIdentified = true;
+					out                   = jQuery.extend({}, items[i]);
+					out.count             = 0;
+
+					addItem( content, items[i]);
+					it = Inventory.getUI().getItemById(items[i].ITID);
+
+					if (it) {
+						item                 = jQuery.extend({}, it);
+						item.ITID            = it.ITID;
+						item.price           = items[i].price;
+						item.count           = ('count' in item) ? item.count : 1;
+						item.maxCount        = isFinite(items[i].count) ? items[i].count : 0;
+
+						out                  = jQuery.extend({}, item);
+						out.count            = 0;
+
+						addItem( availableContent, item);
+
+						_input[item.index]  = item;
+						_output[item.index] = out;
+					}
+				}
+				break;
+
+			case NpcStore.Type.BARTER_MARKET:
 				for (i = 0, count = items.length; i < count; ++i) {
 					if (!('index' in items[i])) {
 						items[i].index = i;
@@ -292,10 +391,13 @@ define(function(require)
 				break;
 
 			case NpcStore.Type.SELL:
+				var InventoryVersion = UIManager.getComponent('Inventory').name;
 				for (i = 0, count = items.length; i < count; ++i) {
-					it = Inventory.getItemByIndex(items[i].index);
+					it = Inventory.getUI().getItemByIndex(items[i].index);
 
-					if (it) {
+					var condition = (InventoryVersion !== 'InventoryV0') ? it && (!Inventory.getUI().npcsalelock || it.PlaceETCTab < 1) : it;
+					
+					if (condition) {
 						item                 = jQuery.extend({}, it);
 						item.price           = items[i].price;
 						item.overchargeprice = items[i].overchargeprice;
@@ -314,6 +416,13 @@ define(function(require)
 		}
 	};
 
+	NpcStore.setPriceLimit = function setPriceLimit(price)
+	{
+		let prettyPrice = prettyZeny(price);
+		let text = DB.getMessage(1735);
+		let result = text.replace("%s", prettyPrice); // workaround
+		this.ui.find('.priceLimit').text(result);
+	}
 
 	/**
 	 * Submit data to send items
@@ -354,9 +463,31 @@ define(function(require)
 			}
 		}
 
-		this.ui.find('.total .result').text(total);
+		this.ui.find('.total .result').text(prettyZeny(total));
+
+		if (_type === NpcStore.Type.BARTER_MARKET) {
+			this.ui.find('.total').hide();
+		}
 
 		return total;
+	};
+
+
+	/**
+	 * Calculate the total weight of all items in the output box
+	 *
+	 * @return {number}
+	 */
+	NpcStore.calculateWeight = function calculateWeight() {
+	    let totalWeight = 0;
+
+	    _output.forEach(item => {
+	        if (item && item.count > 0 && item.total_weight) {
+	            totalWeight += item.total_weight;
+	        }
+	    });
+
+	    return totalWeight;
 	};
 
 
@@ -403,11 +534,19 @@ define(function(require)
 	 * @param {jQuery} content element
 	 * @param {Item} item info
 	 */
-	function addItem( content, item )
+	function addItem( content, item)
 	{
 		var it      = DB.getItemInfo(item.ITID);
+		var currencyit = DB.getItemInfo(item.currencyITID);
 		var element = content.find('.item[data-index='+ item.index +']:first');
 		var price;
+		let amountText;
+
+		let currency_item;
+		if (_type === NpcStore.Type.BARTER_MARKET) {
+			currency_item = { ...item };  // Shallow copy of the item
+			currency_item.ITID = item.currencyITID;
+		}
 
 		// 0 as amount ? remove it
 		if (item.count === 0) {
@@ -420,15 +559,53 @@ define(function(require)
 		// Already here, update it
 		// Note: just the amount can be updated ?
 		if (element.length) {
-			element.find('.amount').text(isFinite(item.count) ? item.count : '');
+			amountText = (_type == NpcStore.Type.BUYING_STORE && !(content.hasClass('contentAvailable'))) ? ' ea.' : '';
+			element.find('.amount').text(isFinite(item.count) ? item.count + amountText: '');
 			return;
 		}
 
-		price = prettyZeny(item.price, _type === NpcStore.Type.VENDING_STORE);
+		if(!(content.hasClass('contentAvailable')) && (_type !== NpcStore.Type.BARTER_MARKET)) {
+			price = prettyZeny(item.price, _type === NpcStore.Type.VENDING_STORE || _type === NpcStore.Type.BUYING_STORE);
 
-		// Discount price
-		if ('discountprice' in item && item.price !== item.discountprice) {
-			price += ' -> ' + prettyZeny(item.discountprice);
+			// Discount price
+			if ('discountprice' in item && item.price !== item.discountprice) {
+				price += ' -> ' + prettyZeny(item.discountprice);
+			}
+			else if ('overchargeprice' in item && item.price !== item.overchargeprice) {
+				price += ' -> ' + prettyZeny(item.overchargeprice);
+			}
+
+			let buyingClass = (_type == NpcStore.Type.BUYING_STORE) ? ' amountBuying' : '';
+			amountText = (_type == NpcStore.Type.BUYING_STORE) ? ' ea.' : '';
+			// Create it
+			content.append(
+				'<div class="item" draggable="true" data-index="'+ item.index +'">' +
+					'<div class="icon"></div>' +
+					'<div class="amount' + buyingClass + '">' + (isFinite(item.count) ? item.count : (_type === NpcStore.Type.BUYING_STORE) ? 0 : '') + amountText + '</div>' +
+					'<div class="name">'+ jQuery.escape(DB.getItemName(item)) +'</div>' +
+					'<div class="price">'+ price +'</div>' +
+					'<div class="unity">Z</div>' +
+				'</div>'
+			);
+		} else if (_type === NpcStore.Type.BARTER_MARKET) {
+			content.append(
+				'<div class="item" draggable="true" data-index="'+ item.index +'" data-weight="'+ item.weight +'" data-location="'+ item.location +'" data-viewSprite="'+ item.viewSprite +'">' +
+					'<div class="icon"></div>' +
+					'<div class="amount">' + (isFinite(item.count) ? item.count : '') + '</div>' +
+					'<div class="name">'+ jQuery.escape(DB.getItemName(item)) +'</div>' +
+					'<div class="currency_icon" data-item="'+ item.currencyITID + '"></div>' +
+					'<div class="currency_amount">' + item.currencyamount + '</div>' +
+					'<div class="currency_nameOverlay">'+ jQuery.escape(DB.getItemName(currency_item)) +' '+ item.currencyamount +' ea</div>' +
+				'</div>'
+			);
+		} else {
+			content.append(
+				'<div class="item itemAvailable" draggable="true" data-index="'+ item.index +'">' +
+					'<div class="icon"></div>' +
+					'<div class="amount">' + (isFinite(item.count) ? item.count : '') + '</div>' +
+					'<div class="nameOverlay">'+ jQuery.escape(DB.getItemName(item)) +'</div>' +
+				'</div>'
+			);
 		}
 		else if ('overchargeprice' in item && item.price !== item.overchargeprice) {
 			price += ' -> ' + prettyZeny(item.overchargeprice);
@@ -466,6 +643,10 @@ define(function(require)
 		// Add the icon once loaded
 		Client.loadFile( DB.INTERFACE_PATH + 'item/' + (item.IsIdentified ? it.identifiedResourceName : it.unidentifiedResourceName) + '.bmp', function(data){
 			content.find('.item[data-index="'+ item.index +'"] .icon').css('backgroundImage', 'url('+ data +')');
+		});
+
+		Client.loadFile( DB.INTERFACE_PATH + 'item/' + (item.IsIdentified ? currencyit.identifiedResourceName : currencyit.unidentifiedResourceName) + '.bmp', function(data){
+			content.find('.item[data-index="'+ item.index +'"] .currency_icon').css('backgroundImage', 'url('+ data +')');
 		});
 	}
 
@@ -526,67 +707,114 @@ define(function(require)
 	/**
 	 * Transfer item from input to output (or the inverse)
 	 *
-	 * @param {jQueryElement} from content (input / output)
-	 * @param {jQueryElement} to content (input / output)
-	 * @param {boolean} is adding the content to the output element
-	 * @param {number} item index
-	 * @param {number} amount
+	 * @param {jQueryElement} fromContent (input / output)
+	 * @param {jQueryElement} toContent (input / output)
+	 * @param {boolean} isAdding adding the content to the output element
+	 * @param {number} index item index
+	 * @param {number} count amount
 	 */
-	var transferItem = function transferItemQuantityClosure()
-	{
-		var tmpItem = {
-			ITID:   0,
-			count:  0,
-			price:  0,
-			index:  0
-		};
+	const transferItem = function() {
+	    const tmpItem = {
+	        ITID: 0,
+	        count: 0,
+	        price: 0,
+	        index: 0
+	    };
 
-		return function transferItem(fromContent, toContent, isAdding, index, count)
-		{
-			// Add item to the list
+	    const updateTmpItem = (inputItem, outputItem) => {
+	        tmpItem.ITID = inputItem.ITID;
+	        tmpItem.count = inputItem.count - outputItem.count;
+	        tmpItem.price = inputItem.price;
+	        tmpItem.index = inputItem.index;
+	    };
+
+	    return function(fromContent, toContent, isAdding, index, count) {
+			const inputItem = _input[index];
+			const outputItem = _output[index];
+
 			if (isAdding) {
-
-				// You don't have enough zeny
-				if (_type === NpcStore.Type.BUY || _type === NpcStore.Type.VENDING_STORE) {
-					if (NpcStore.calculateCost() + (_input[index].discountprice || _input[index].price) * count > Session.zeny) {
-						ChatBox.addText( DB.getMessage(55), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
-						return;
-					}
+				if ((_type === NpcStore.Type.BUY || _type === NpcStore.Type.VENDING_STORE || _type === NpcStore.Type.MARKETSHOP) &&
+					NpcStore.calculateCost() + (inputItem.discountprice || inputItem.price) * count > Session.zeny) {
+					ChatBox.addText(DB.getMessage(55), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
+					return;
 				}
 
-				_output[index].count = Math.min( _output[index].count + count, _input[index].count);
+				let originalCount = outputItem.count;
+				outputItem.count = Math.min(outputItem.count + count, inputItem.count); // Update count
 
-				// Update input ui item amount
-				tmpItem.ITID  = _input[index].ITID;
-				tmpItem.count = _input[index].count - _output[index].count;
-				tmpItem.price = _input[index].price;
-				tmpItem.index = _input[index].index;
+				if (_type === NpcStore.Type.BARTER_MARKET) {
+					// Calculate weight
+					let inputCurrency = NpcStore.ui.find(`.InputWindow .item[data-index="${index}"]`);
+					let inputCurrencyDiv = NpcStore.ui.find(`.InputWindow .item[data-index="${index}"] .currency_amount`);
+					let currencyItemWeight = parseInt(inputCurrency.attr('data-weight'), 10);
+					let currencyAmount = parseInt(inputCurrencyDiv.text(), 10);
+					let additionalWeight = currencyItemWeight * (outputItem.count - originalCount);
+					let expectedWeight = Session.Character.weight + NpcStore.calculateWeight() + additionalWeight;
 
-				addItem( fromContent, tmpItem);
-				addItem( toContent, _output[index]);
-			}
 
-			// Remove item
-			else {
-				count = Math.min(count, _output[index].count);
+					if (expectedWeight > Session.Character.max_weight) {
+						ChatBox.addText(DB.getMessage(56), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
+						outputItem.count -= count; // Revert count change
+						return;
+					}
+
+					outputItem.total_weight = currencyItemWeight * outputItem.count;
+
+					// First, update the items
+					updateTmpItem(inputItem, outputItem);
+					addItem(fromContent, tmpItem);
+					addItem(toContent, outputItem);
+
+					// Then, update currency properties
+					let outputCurrencyDiv = NpcStore.ui.find(`.OutputWindow .item[data-index="${index}"] .currency_amount`);
+					let currencyItemDiv = NpcStore.ui.find(`.OutputWindow .item[data-index="${index}"] .currency_icon`);
+					let currencyItem = parseInt(currencyItemDiv.attr('data-item'), 10);
+					let currencyTotal = currencyAmount * outputItem.count;
+
+					outputCurrencyDiv.text(currencyTotal); // Update displayed currency total
+					outputItem.shopIndex = index; // Assign shop index
+					outputItem.matcurrency = currencyItem; // Assign material currency ID
+					outputItem.matcurrencyamount = currencyTotal; // Assign material currency amount
+				} else {
+					updateTmpItem(inputItem, outputItem);
+					addItem(fromContent, tmpItem);
+					addItem(toContent, outputItem);
+				}
+
+				if (typeof outputItem.maxCount !== 'undefined' && outputItem.count > outputItem.maxCount) {
+					let text = DB.getMessage(1739).replace("%d", outputItem.maxCount);
+					ChatBox.addText(text, ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
+				}
+			} else {
+				count = Math.min(count, outputItem.count);
 				if (!count) {
 					return;
 				}
 
-				_output[index].count -= count;
+				outputItem.count -= count;
 
-				// Update input ui item amount
-				tmpItem.ITID  = _input[index].ITID;
-				tmpItem.count = _input[index].count + _output[index].count;
-				tmpItem.price = _input[index].price;
-				tmpItem.index = _input[index].index;
+				if (_type === NpcStore.Type.BARTER_MARKET) {
+					let inputCurrency = NpcStore.ui.find(`.InputWindow .item[data-index="${index}"]`);
+					let currencyItemWeight = parseInt(inputCurrency.attr('data-weight'), 10);
+					outputItem.total_weight = currencyItemWeight * outputItem.count;
+		
+					let inputCurrencyDiv = NpcStore.ui.find(`.InputWindow .item[data-index="${index}"] .currency_amount`);
+					let outputCurrencyDiv = NpcStore.ui.find(`.OutputWindow .item[data-index="${index}"] .currency_amount`);
+					let currencyAmount = parseInt(inputCurrencyDiv.text(), 10);
+					let currencyTotal = currencyAmount * outputItem.count;
 
-				addItem( fromContent, _output[index]);
-				addItem( toContent,   tmpItem);
+					outputCurrencyDiv.text(currencyTotal);
+					outputItem.matcurrencyamount = currencyTotal; // Update material currency amount
+				}
+
+				updateTmpItem(inputItem, outputItem);
+				addItem(fromContent, outputItem);
+				addItem(toContent, tmpItem);
 			}
 
 			NpcStore.calculateCost();
-		};
+			NpcStore.calculateWeight(); // Update total weight after every operation
+		};		
 	}();
 
 
@@ -787,12 +1015,16 @@ define(function(require)
 	function onDragStart( event )
 	{
 		var container, img, url;
-		var InputWindow, OutputWindow;
+		var InputWindow, OutputWindow, AvailableItemsWindow;
 
 		InputWindow  = NpcStore.ui.find('.InputWindow:first').get(0);
 		OutputWindow = NpcStore.ui.find('.OutputWindow:first').get(0);
+		AvailableItemsWindow = NpcStore.ui.find('.AvailableItemsWindow:first').get(0);
 
-		container = (jQuery.contains(InputWindow, this) ? InputWindow : OutputWindow).className;
+		container = (jQuery.contains(InputWindow, this) ? InputWindow : (jQuery.contains(AvailableItemsWindow, this)) ? AvailableItemsWindow : OutputWindow).className;
+		img       = new Image();
+		url       = this.firstChild.style.backgroundImage.match(/\(([^\)]+)/)[1].replace(/"/g, '');
+		img.src   = url;
 
 		window._OBJ_DRAG_ = {
 			type:      'item',
@@ -814,6 +1046,86 @@ define(function(require)
 			this.style.backgroundImage = 'url('+ data +')';
 		}.bind(this));
 	}
+
+
+	/**
+	 * Handles the packet to send to the server when closing stores
+	 */
+	NpcStore.closeStore = function() {
+		NpcStore.remove();
+		this.ui.find('.total').show();
+
+		NpcStore.StoreClosePacket(_type);
+	};
+
+
+	/**
+	* Handles packet to close store based on the store type
+	*
+	* @param {String} type - The store type (e.g., NpcStore.Type.MARKETSHOP, etc.)
+	*/
+	NpcStore.StoreClosePacket = function(type) {
+		let inputWindow  = NpcStore.ui.find('.InputWindow');
+		let outputWindow = NpcStore.ui.find('.OutputWindow');
+
+		let pkt;
+		switch(type) {
+			case NpcStore.Type.MARKETSHOP:
+				pkt = new PACKET.CZ.NPC_MARKET_CLOSE();
+				inputWindow.show();
+				outputWindow.show();
+				break;
+			case NpcStore.Type.BARTER_MARKET:
+				pkt = new PACKET.CZ.NPC_BARTER_MARKET_CLOSE();
+				break;
+			default:
+				pkt = new PACKET.CZ.NPC_TRADE_QUIT();
+				break;
+		}
+		Network.sendPacket(pkt);
+	};
+
+
+	/**
+	 * Returns Npc Store Type
+	 * @returns {_type}
+	 */
+	NpcStore.getCurrentType = function() {
+		return _type;
+	};
+
+
+	/**
+	 * Update Marketshop Result UI
+	 *
+	 * @param {Array.<PACKET.ZC.NPC_MARKET_PURCHASE_RESULT.Item>} itemList
+	 * @param {Array.<PACKET.ZC.NPC_MARKET_PURCHASE_RESULT2.Item>} itemList
+	 */
+	NpcStore.onMarketShopResultUI = function(itemList) {
+		let InputWindow  = NpcStore.ui.find('.InputWindow');
+		let OutputWindow = NpcStore.ui.find('.OutputWindow');
+		let OutputWindowcontent = OutputWindow.find('.content');
+		let resultUI = NpcStore.ui.find('.PurchaseResult');
+		let resultUIcontent =  resultUI.find('.content');
+
+		// Update UI
+		InputWindow.hide();
+		OutputWindow.hide();
+		resultUI.show();
+		resultUIcontent.empty();
+
+		if (!itemList || itemList.length === 0) {
+			return;
+		}
+
+		// Hack (Using the itemList from packet rearranges the index, so clone OutputWindow instead)
+		resultUIcontent.append(OutputWindowcontent.children().clone());
+
+		// Reapply resize logic for PurchaseResult
+		resultUI.find('.resize').off('mousedown').on('mousedown', function() {
+    		onResize(resultUI);
+		});
+	};
 
 
 	/**

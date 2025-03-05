@@ -31,6 +31,11 @@ define(function(require)
 	var MapName = new UIComponent( 'MapName', htmlText, cssText );
 
 	/**
+	 * Mouse can cross this UI
+	 */
+	MapName.mouseMode = UIComponent.MouseMode.CROSS;
+
+	/**
 	 * @var {array} _mapinfo
 	 */
 	var _mapinfo = [];
@@ -101,9 +106,9 @@ define(function(require)
 		_newMap = (_currMap !== _prevMap);
 		
         _mapinfo = DB.getMapInfo(mapname.replace('.gat', '.rsw'));
-		console.log('Mapinfo:', _mapinfo);
-		
+
 		/*
+		console.log('Mapinfo:', _mapinfo);
 		console.log('bg:%s, subtitle:%s, title:%s', _mapinfo.backgroundBmp, _mapinfo.signName.subTitle, _mapinfo.signName.mainTitle );
 		*/
 		if ( _mapinfo && _mapinfo.backgroundBmp ) {
@@ -141,6 +146,17 @@ define(function(require)
 		MapName.ui.find('.mapbg').css('backgroundImage', 'none');
 		mapsubtitle.empty();
 		maptitle.empty();
+	};
+
+	/**
+	 * Resets the state of the MapName component.
+	 *
+	 * Resets the current map name, previous map name, and the new map flag.
+	 */
+	MapName.resetState = function() {
+		_currMap = '';
+        _prevMap = '';
+		_newMap = false;
 	};
 
 	/**

@@ -26,19 +26,18 @@ define(function( require )
 	var Network      = require('Network/NetworkManager');
 	var PACKETVER    = require('Network/PacketVerManager');
 	var PACKET       = require('Network/PacketStructure');
+	var PluginManager = require('Plugins/PluginManager');
 	var Renderer     = require('Renderer/Renderer');
 	var UIManager    = require('UI/UIManager');
 	var WinList      = require('UI/Components/WinList/WinList');
 	var WinPopup     = require('UI/Components/WinPopup/WinPopup');
+	var Queue        = require('Utils/Queue');
+	var Background  = require('UI/Background');
 	var MD5          = require('Vendors/spark-md5.min');
-	var WinLogin;
-	if(PACKETVER.value >= 20181114) {
-		WinLogin = require('UI/Components/WinLoginV2/WinLoginV2');
-	} else {
-		WinLogin = require('UI/Components/WinLogin/WinLogin');
-	}
 	var getModule    = require;
-
+	
+	// Version Dependent UIs
+	var WinLogin = require('UI/Components/WinLogin/WinLogin');;
 
 	/**
 	 * Creating WinLoading
@@ -75,6 +74,8 @@ define(function( require )
 	function init( server )
 	{
 		var charset;
+		var q = new Queue();
+		var old_server = _server;
 
 		Configs.setServer(server);
 		UIManager.removeComponents();
@@ -102,19 +103,10 @@ define(function( require )
 				charset = 'windows-949';
 				break;
 
-			// SERVICETYPE_AMERICA
-			// SERVICETYPE_INDONESIA
-			// SERVICETYPE_PHILIPPINE
-			// SERVICETYPE_MALAYSIA
-			// SERVICETYPE_SINGAPORE
-			// SERVICETYPE_GERMANY
-			// SERVICETYPE_INDIA
-			// SERVICETYPE_AUSTRALIA
-			default:
-			case 0x0c: // SERVICETYPE_BRAZIL
-			case 0x12: // SERVICETYPE_FRANCE
-				charset = 'windows-1250';
+			case 0x01: // SERVICETYPE_AMERICA
+				charset = 'windows-1252';
 				break;
+				
 			case 0x02: // SERVICETYPE_JAPAN
 				charset = 'shift-jis';
 				break;
@@ -130,6 +122,17 @@ define(function( require )
 			case 0x05: // SERVICETYPE_THAI
 				charset = 'windows-874';
 				break;
+				
+			case 0x06: // SERVICETYPE_INDONESIA
+			case 0x07: // SERVICETYPE_PHILIPPINE
+			case 0x08: // SERVICETYPE_MALAYSIA
+			case 0x09: // SERVICETYPE_SINGAPORE
+			case 0x0a: // SERVICETYPE_GERMANY
+			case 0x0b: // SERVICETYPE_INDIA
+			case 0x0c: // SERVICETYPE_BRAZIL
+			case 0x0d: // SERVICETYPE_AUSTRALIA
+				charset = 'windows-1252';
+				break;
 
 			case 0x0e: // SERVICETYPE_RUSSIA
 				charset = 'windows-1251';
@@ -139,19 +142,64 @@ define(function( require )
 				charset = 'windows-1258';
 				break;
 
-			// Not supported by the encoder/decoder, jump to windows-1252
+			// Not supported by the encoder/decoder, default to windows-1252
 			//case 0x11: // SERVICETYPE_CHILE
 			//	charset = 'windows-1145';
 			//	break;
+			
+			case 0x12: // SERVICETYPE_FRANCE
+				charset = 'windows-1252';
+				break;
 
-			case 0x14: // SERVICETYPE_UAE
+			case 0x13: // SERVICETYPE_UAE
 				charset = 'windows-1256';
 				break;
-			case 0x99:
-				charset = 'windows-1250'; //EASTERN EUROPEAN
+		
+			/////////////////////////////////////////////////////
+			// CUSTOM TYPES                                    //
+			// Only use them if you know what you are doing ;) //
+			/////////////////////////////////////////////////////
+			case 0xa0: // 160 - Central European
+				charset = 'windows-1250';
+				break;
+				
+			case 0xa1: // 161 - Greek
+				charset = 'windows-1253';
+				break;
+				
+			case 0xa2: // 162 - Tukish
+				charset = 'windows-1254';
+				break;
+				
+			case 0xa3: // 163 - Hebrew
+				charset = 'windows-1255';
+				break;
+				
+			case 0xa4: // 164 - Estonian, Latvian, Lithuaninan
+				charset = 'windows-1257';
+				break;
+			
+			/////////////////////////////////////////////////////
+			// Custom unicode types                            //
+			// Only use them if you know what you are doing ;) //
+			/////////////////////////////////////////////////////
+			case 0xf0: // 240 - UTF-8
+				charset = 'utf-8';
+				break;
+			case 0xf1: // 241 - UTF-16LE
+				charset = 'utf-16le';
+				break;
+			case 0xf2: // 242 - UTF-16BE
+				charset = 'utf-16be';
+				break;
+			
+			default: // Latin1
+				charset = 'windows-1252';
 				break;
 		}
-
+		
+		console.log( "%c[LOGIN] Language Type: ", "color:#007000", Session.LangType);
+		console.log( "%c[LOGIN] Encoding: ", "color:#007000", charset);
 		TextEncoding.setCharset(charset);
 		_server = server;
 
@@ -176,6 +224,27 @@ define(function( require )
 		// Add support for remote client in server definition
 		if (remoteClient) {
 			Thread.send( 'SET_HOST', remoteClient);
+
+			// Check if the selected server changed.
+			if (old_server != null && (old_server.address != _server.address ||
+			old_server.port != _server.port)) {
+				// Re-Loading game data with server specific files (txt, lua, lub)
+				q.add(function(){
+					DB.onReady = function(){
+						Background.setImage( 'bgi_temp.bmp'); // remove loading
+						q._next();
+					};
+					DB.onProgress = function(i, count) {
+						Background.setPercent( Math.floor(i/count * 100) );
+					};
+					UIManager.removeComponents();
+					Background.init();
+					Background.resize( Renderer.width, Renderer.height );
+					Background.setImage( 'bgi_temp.bmp', function(){
+						DB.init();
+					});
+				});
+			}
 		}
 
 		// Server audio configuration
@@ -185,10 +254,15 @@ define(function( require )
 
 		// GMs account list from server
 		Session.AdminList = server.adminList || [];
+		
+		// Init per server plugins
+		PluginManager.init();
 
 		// Hooking win_login
-		WinLogin.onConnectionRequest = onConnectionRequest;
-		WinLogin.onExitRequest       = onExitRequest;
+		WinLogin.selectUIVersion();
+		
+		WinLogin.getUI().onConnectionRequest = onConnectionRequest;
+		WinLogin.getUI().onExitRequest       = onExitRequest;
 
 		// Autologin features
 		if (autoLogin instanceof Array && autoLogin[0] && autoLogin[1]) {
@@ -196,7 +270,7 @@ define(function( require )
 			Configs.set('autoLogin',null);
 		}
 		else {
-			WinLogin.append();
+			q.add(function(){ WinLogin.getUI().append(); });
 		}
 
 		// Hook packets
@@ -208,6 +282,9 @@ define(function( require )
 		Network.hookPacket( PACKET.AC.REFUSE_LOGIN,    onConnectionRefused );
 		Network.hookPacket( PACKET.AC.REFUSE_LOGIN_R2, onConnectionRefused );
 		Network.hookPacket( PACKET.SC.NOTIFY_BAN,      onServerClosed );
+		
+		// Execute
+		q.run();
 	}
 
 
@@ -217,9 +294,9 @@ define(function( require )
 	function reload()
 	{
 		UIManager.removeComponents();
-		WinLogin.onConnectionRequest = onConnectionRequest;
-		WinLogin.onExitRequest       = onExitRequest;
-		WinLogin.append();
+		WinLogin.getUI().onConnectionRequest = onConnectionRequest;
+		WinLogin.getUI().onExitRequest       = onExitRequest;
+		WinLogin.getUI().append();
 
 		Network.close();
 	}
@@ -238,7 +315,7 @@ define(function( require )
 
 		// Add the loading screen
 		// Store the ID to use for the ping
-		WinLogin.remove();
+		WinLogin.getUI().remove();
 		WinLoading.append();
 		_loginID = username;
 
@@ -341,6 +418,7 @@ define(function( require )
 		WinLoading.append();
 
 		CharEngine.onExitRequest = reload;
+		Session.ServerName = _charServers[index].name; // Save server name
 		CharEngine.init( _charServers[index] );
 	}
 
@@ -373,6 +451,7 @@ define(function( require )
 		if (count === 1 && Configs.get('skipServerList')) {
 			WinLoading.append();
 			CharEngine.onExitRequest = reload;
+			Session.ServerName = _charServers[0].name; // Save server name
 			CharEngine.init(_charServers[0]);
 		}
 
@@ -383,7 +462,7 @@ define(function( require )
 			WinList.onExitRequest   = function(){
 				Network.close();
 				WinList.remove();
-				WinLogin.append();
+				WinLogin.getUI().append();
 			};
 			WinList.append();
 			WinList.setList(list);
@@ -436,7 +515,7 @@ define(function( require )
 			'ok',
 			function(){
 				UIManager.removeComponents();
-				WinLogin.append();
+				WinLogin.getUI().append();
 			},
 			true
 		);
@@ -477,10 +556,23 @@ define(function( require )
 
 
 	/**
+	 * setLoadedServer()
+	 *
+	 * Called by GameEngine when it reloads files due to a service change
+	 * so we don't wind up trying to load the db twice. (Or concurrently.)
+	 */
+	function setLoadedServer( server )
+	{
+		_server = server;
+	}
+
+
+	/**
 	 * Export
 	 */
 	return {
 		init:   init,
-		reload: reload
+		reload: reload,
+		setLoadedServer: setLoadedServer
 	};
 });

@@ -14,6 +14,7 @@ define(function(require)
 	 * Dependencies
 	 */
 	var DB                 = require('DB/DBManager');
+	var ItemType           = require('DB/Items/ItemType');
 	var jQuery             = require('Utils/jquery');
 	var Client             = require('Core/Client');
 	var Preferences        = require('Core/Preferences');
@@ -25,6 +26,7 @@ define(function(require)
 	var ItemInfo           = require('UI/Components/ItemInfo/ItemInfo');
 	var htmlText           = require('text!./Storage.html');
 	var cssText            = require('text!./Storage.css');
+	var getModule		   = require;
 
 
 	/**
@@ -34,31 +36,13 @@ define(function(require)
 
 
 	/**
-	 * Item type constants
-	 */
-	Storage.ITEM = {
-		HEALING:       0,
-		USABLE:        2,
-		ETC:           3,
-		WEAPON:        4,
-		EQUIP:         5,
-		CARD:          6,
-		PETEGG:        7,
-		PETEQUIP:      8,
-		AMMO:         10,
-		USABLE_SKILL: 11,
-		USABLE_UNK:   18
-	};
-
-
-	/**
 	 * Tab constant
 	 */
 	Storage.TAB = {
 		ITEM:   0,
 		KAFRA:  1,
-		ARMS:   2,
-		ARMOR:  3,
+		ARMOR:  2,
+		ARMS:   3,
 		AMMO:   4,
 		CARD:   5,
 		ETC:    6
@@ -191,37 +175,37 @@ define(function(require)
 		var content = this.ui.find('.container .content');
 
 		switch (item.type) {
-			case Storage.ITEM.HEALING:
-			case Storage.ITEM.USABLE:
-			case Storage.ITEM.USABLE_SKILL:
-			case Storage.ITEM.USABLE_SKILL_UNK:
+			case ItemType.HEALING:
+			case ItemType.USABLE:
+			case ItemType.DELAYCONSUME:
 				tab = Storage.TAB.ITEM;
 				break;
 
-			// TOFIX: WTH is it for ?
-			//	tab = Storage.TAB.KAFRA;
-			//	break;
+			case ItemType.CASH:
+				tab = Storage.TAB.KAFRA;
+				break;
 
-			case Storage.ITEM.EQUIP:
-			case Storage.ITEM.PETEQUIP:
+			case ItemType.ARMOR:
+			case ItemType.SHADOWGEAR:
+			case ItemType.PETEGG:
 				tab = Storage.TAB.ARMOR;
 				break;
 
-			case Storage.ITEM.WEAPON:
+			case ItemType.WEAPON:
+			case ItemType.PETARMOR:
 				tab = Storage.TAB.ARMS;
 				break;
 
-			case Storage.ITEM.AMMO:
+			case ItemType.AMMO:
 				tab = Storage.TAB.AMMO;
 				break;
 
-			case Storage.ITEM.CARD:
+			case ItemType.CARD:
 				tab = Storage.TAB.CARD;
 				break;
 
 			default:
-			case Storage.ITEM.ETC:
-			case Storage.ITEM.PETEGG:
+			case ItemType.ETC:
 				tab = Storage.TAB.ETC;
 				break;
 		}
@@ -606,6 +590,13 @@ define(function(require)
 			return false;
 		}
 
+		// If right click w/ alt (Request Transfer Item)
+		if (event.altKey && event.which === 3) {
+			event.stopImmediatePropagation();
+			transferItemToOtherUI( _list[i] );
+			return false;
+		}
+
 		// Don't add the same UI twice, remove it
 		if (ItemInfo.uid === _list[i].ITID) {
 			ItemInfo.remove();
@@ -618,6 +609,32 @@ define(function(require)
 
 		return false;
 	}
+
+
+	/**
+	 * Alt Right Click Request Transfer
+	 */
+	function transferItemToOtherUI(item)
+	{
+		var CartItems = getModule('UI/Components/CartItems/CartItems');
+		var Inventory = getModule('UI/Components/Inventory/Inventory');
+		var isInventoryOpen = Inventory.getUI().ui ? Inventory.getUI().ui.is(':visible') : false;
+		var isCartOpen = CartItems.ui ? CartItems.ui.is(':visible') : false;
+
+		if (!item) {
+			return false;
+		}
+
+		var count = item.count || 1;
+
+		if (isInventoryOpen) {
+			Storage.reqRemoveItem(item.index, count);
+		} else if (isCartOpen) {
+			Storage.reqMoveItemToCart(item.index, count);
+		}
+
+		return true;
+	};
 
 
 	/**

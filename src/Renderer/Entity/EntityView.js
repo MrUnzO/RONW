@@ -50,21 +50,22 @@ define(function( require )
 		this.accessory  = new ViewFiles();
 		this.accessory2 = new ViewFiles();
 		this.accessory3 = new ViewFiles();
+		this.robe       = new ViewFiles();
 		this.shadow     = new ViewFiles('data/sprite/shadow.spr', 'data/sprite/shadow.act');
 
 		this.cart     = [];
 		//Super novice
-		this.cart[0] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbd\xb4\xb3\xeb\xbc\xd5\xbc\xf6\xb7\xb9.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbd\xb4\xb3\xeb\xbc\xd5\xbc\xf6\xb7\xb9.act');
+		this.cart[0] = 	new ViewFiles(DB.getCartPath(0)+'.spr', DB.getCartPath(0)+'.act');
 
-		this.cart[1] = new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb9.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb9.act');
-		this.cart[2] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb91.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb91.act');
-		this.cart[3] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb92.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb92.act');
-		this.cart[4] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb93.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb93.act');
-		this.cart[5] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb94.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb94.act');
-		this.cart[6] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb95.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb95.act');
-		this.cart[7] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb96.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb96.act');
-		this.cart[8] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb97.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb97.act');
-		this.cart[9] = 	new ViewFiles('data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb98.spr', 'data/sprite/\xc0\xcc\xc6\xd1\xc6\xae/\xbc\xd5\xbc\xf6\xb7\xb98.act');
+		this.cart[1] = new ViewFiles(DB.getCartPath(1)+'.spr', DB.getCartPath(1)+'.act');
+		this.cart[2] = 	new ViewFiles(DB.getCartPath(2)+'.spr', DB.getCartPath(2)+'.act');
+		this.cart[3] = 	new ViewFiles(DB.getCartPath(3)+'.spr', DB.getCartPath(3)+'.act');
+		this.cart[4] = 	new ViewFiles(DB.getCartPath(4)+'.spr', DB.getCartPath(4)+'.act');
+		this.cart[5] = 	new ViewFiles(DB.getCartPath(5)+'.spr', DB.getCartPath(5)+'.act');
+		this.cart[6] = 	new ViewFiles(DB.getCartPath(6)+'.spr', DB.getCartPath(6)+'.act');
+		this.cart[7] = 	new ViewFiles(DB.getCartPath(7)+'.spr', DB.getCartPath(7)+'.act');
+		this.cart[8] = 	new ViewFiles(DB.getCartPath(8)+'.spr', DB.getCartPath(8)+'.act');
+		this.cart[9] = 	new ViewFiles(DB.getCartPath(9)+'.spr', DB.getCartPath(9)+'.act');
 
 		this.cart_shadow     = new ViewFiles('data/sprite/shadow.spr', 'data/sprite/shadow.act');
 	}
@@ -91,6 +92,7 @@ define(function( require )
 		this.accessory   = this._accessory;
 		this.accessory2  = this._accessory2;
 		this.accessory3  = this._accessory3;
+		this.robe        = this._robe;
 	}
 
 
@@ -148,7 +150,10 @@ define(function( require )
 				job < 45   ? Entity.TYPE_PC   :
 				job < 46   ? Entity.TYPE_WARP :
 				job < 1000 ? Entity.TYPE_NPC  :
+				job < 1000 ? Entity.TYPE_NPC2 :
 				job < 4000 ? Entity.TYPE_MOB  :
+				job < 4000 ? Entity.TYPE_NPC_ABR :
+				job < 4000 ? Entity.TYPE_NPC_BIONIC :
 				job < 6000 ? Entity.TYPE_PC   :
 				job < 7000 ? Entity.TYPE_HOM  :
 				             Entity.TYPE_MERC
@@ -244,7 +249,7 @@ define(function( require )
 		}
 
 		this._head  = head;
-		path        = DB.getHeadPath( head, this.job, this._sex );
+		path        = DB.getHeadPath( head, this.job, this._sex, this.isOrcish);
 
 		Client.loadFile(path + '.act');
 		Client.loadFile(path + '.spr', function(){
@@ -303,6 +308,7 @@ define(function( require )
 			switch (type) {
 				case 'weapon':
 				case 'shield':
+				case 'robe':
 					path  = DB[func]( val, this.job, this._sex );
 					break;
 
@@ -424,6 +430,11 @@ define(function( require )
 		Object.defineProperty(this, 'accessory3', {
 			get: function(){ return this._accessory3; },
 			set: UpdateGeneric('accessory3', 'getHatPath')
+		});
+
+		Object.defineProperty(this, 'robe', {
+			get: function(){ return this._robe; },
+			set: UpdateGeneric('robe', 'getRobePath')
 		});
 	};
 });

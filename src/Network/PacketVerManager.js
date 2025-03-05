@@ -8,17 +8,15 @@
  * @author Vincent Thibault
  */
 
-define(['Core/Configs'], function( Configs )
+define(['Core/Configs', 'Network/PacketLength'], function( Configs, PacketLength )
 {
 	"use strict";
-
 
 	/**
 	 * PACKETVER range
 	 * @var integer
 	 */
 	var _value = 0;
-
 
 	/**
 	 * Loop over version to find the good one
@@ -102,7 +100,7 @@ define(['Core/Configs'], function( Configs )
 			blockSize += 4; // job_exp
 		}
 
-		if (_value >= 20201007) {
+		if (_value >= 20211103) {
 			blockSize += 4; // hp
 			blockSize += 4; // maxhp
 			blockSize += 6; // sp
@@ -180,11 +178,11 @@ define(['Core/Configs'], function( Configs )
 				out[i].maxhp = fp.readShort();
 			} else {
 				out[i].hp = fp.readLong();
-				if (_value >= 20201007 || blockSize >= 175) {
+				if (_value >= 20211103 || blockSize >= 175) {
 					fp.readLong();
 				}
 				out[i].maxhp = fp.readLong();
-				if (_value >= 20201007 || blockSize >= 175) {
+				if (_value >= 20211103 || blockSize >= 175) {
 					fp.readLong();
 				}
 			}
@@ -194,9 +192,13 @@ define(['Core/Configs'], function( Configs )
 				out[i].maxsp = fp.readShort();
 			} else {
 				out[i].sp = fp.readLong();
-				fp.readLong();
+				if (_value >= 20211103 || blockSize >= 175) {
+					fp.readLong();
+				}
 				out[i].maxsp = fp.readLong();
-				fp.readLong();
+				if (_value >= 20211103 || blockSize >= 175) {
+					fp.readLong();
+				}
 			}
 			out[i].speed = fp.readShort();
 			out[i].job = fp.readShort();
@@ -301,12 +303,13 @@ define(['Core/Configs'], function( Configs )
 
 		// Get Back data
 		get value() {
-			return (_value > 0 ? _value : ROConfig.servers[0].packetver);
+			return (_value > 0 ? _value : (ROConfig.servers[0].packetver || ROConfig.packetver));
 			//return _value;
 		},
 
 		set value(v) {
 			if (v !== _value) {
+				PacketLength.init(v);
 				console.log( "%c[PACKETVER] Set packet version ", "color:#007000", _value = v);
 			}
 		},

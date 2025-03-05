@@ -23,7 +23,7 @@ define(function( require )
 	var Session     = require('Engine/SessionStorage');
 	var Friends     = require('Engine/MapEngine/Friends');
 	var PACKETVER   = require('Network/PacketVerManager');
-	var PACKET      = require('Network/PacketStructure');	
+	var PACKET      = require('Network/PacketStructure');
 	var Network     = require('Network/NetworkManager');
 	var Cursor      = require('UI/CursorManager');
 	var InputBox    = require('UI/Components/InputBox/InputBox');
@@ -33,6 +33,8 @@ define(function( require )
 	var Trade       = require('UI/Components/Trade/Trade');
 	var NpcBox 		= require('UI/Components/NpcBox/NpcBox');
 	var Altitude 	= require('Renderer/Map/Altitude');
+	var ChatBox     = require('UI/Components/ChatBox/ChatBox');
+	var Equipment   = require('UI/Components/Equipment/Equipment');
 	var getModule   = require;
 
 
@@ -62,24 +64,26 @@ define(function( require )
 			case Entity.TYPE_ELEM:
 			case Entity.TYPE_HOM:
 			case Entity.TYPE_MERC:
-				// TODO: Check for pvp flag ?
-				if ((KEYS.SHIFT === false && Preferences.noshift === false) || this === Session.Entity)  {
+				if ((KEYS.SHIFT === true || Preferences.noshift === true) && this !== Session.Entity)  {
 					if (!Camera.action.active ) {
-						Cursor.setType( Cursor.ACTION.DEFAULT );
+						Cursor.setType( Cursor.ACTION.ATTACK );
 					}
 					break;
 				}
 
-				Cursor.setType( Cursor.ACTION.ATTACK );
+				let action = this.canAttackEntity() ? Cursor.ACTION.ATTACK : Cursor.ACTION.DEFAULT;
+				Cursor.setType( action );
 				break;
 
 			case Entity.TYPE_MOB:
 			case Entity.TYPE_UNIT:
+			case Entity.TYPE_NPC_ABR:
+			case Entity.TYPE_NPC_BIONIC:
 				Cursor.setType( Cursor.ACTION.ATTACK );
 				break;
 
 			case Entity.TYPE_NPC:
-			case Entity.TYPE_WALKNPC:
+			case Entity.TYPE_NPC2:
 				//check if already talk to NPC
 				if (!NpcBox.ui || !NpcBox.ui.is(':visible')) {
 					Cursor.setType( Cursor.ACTION.TALK, true );
@@ -190,7 +194,7 @@ define(function( require )
 				return true;
 
 			case Entity.TYPE_NPC:
-			case Entity.TYPE_WALKNPC:
+			case Entity.TYPE_NPC2:
 				//check if already talk to NPC
 				if (!NpcBox.ui || !NpcBox.ui.is(':visible')) {
 					pkt      = new PACKET.CZ.CONTACTNPC();
@@ -228,7 +232,7 @@ define(function( require )
 					if (Altitude.getCellType(x, y) & Altitude.TYPE.WALKABLE) {
 						break
 					}
-				}	
+				}
 
 				if(PACKETVER.value >= 20180307) {
 					pkt         = new PACKET.CZ.REQUEST_MOVE2();
@@ -281,10 +285,10 @@ define(function( require )
 
 				ContextMenu.remove();
 				ContextMenu.append();
-				
+
 				// Check equipment
 				ContextMenu.addElement( DB.getMessage(1360).replace('%s', this.display.name), function(){
-					getModule('UI/Components/Equipment/Equipment').onCheckPlayerEquipment(entity.GID);
+					getModule(Equipment.onCheckPlayerEquipment(entity.GID)); // simple version
 				});
 
 				// Trade option
@@ -350,9 +354,34 @@ define(function( require )
 					ContextMenu.addElement( 'Feed', function(){
 						getModule('UI/Components/HomunInformations/HomunInformations').reqHomunFeed();
 					});
-					ContextMenu.addElement( 'Stand By', function(){
-						getModule('UI/Components/HomunInformations/HomunInformations').toggleAggressive();
+					if (localStorage.getItem('HOM_AGGRESSIVE') == 0) {
+						ContextMenu.addElement( 'Assist', function(){
+							getModule('UI/Components/HomunInformations/HomunInformations').toggleAggressive();
+						});
+					} else {
+						ContextMenu.addElement( 'Stand By', function(){
+							getModule('UI/Components/HomunInformations/HomunInformations').toggleAggressive();
+						});
+					}
+				}
+				break;
+
+			case Entity.TYPE_MERC:
+				if (Session.mercId === this.GID) {
+					ContextMenu.remove();
+					ContextMenu.append();
+					ContextMenu.addElement( 'View Status', function(){
+						getModule('UI/Components/MercenaryInformations/MercenaryInformations').ui.toggle();
 					});
+					if (localStorage.getItem('MER_AGGRESSIVE') == 0) {
+						ContextMenu.addElement( 'Assist', function(){
+							getModule('UI/Components/MercenaryInformations/MercenaryInformations').toggleAggressive();
+						});
+					} else {
+						ContextMenu.addElement( 'Stand By', function(){
+							getModule('UI/Components/MercenaryInformations/MercenaryInformations').toggleAggressive();
+						});
+					}
 				}
 				break;
 		}
@@ -376,7 +405,7 @@ define(function( require )
 			case Entity.TYPE_ELEM:
 			case Entity.TYPE_HOM:
 				// TODO: add check for PVP/WOE mapflag
-				if (KEYS.SHIFT === false && Preferences.noshift === false)  {
+				if (KEYS.SHIFT === false && Preferences.noshift === false && !this.canAttackEntity())  {
 					if (!Camera.action.active) {
 						Cursor.setType( Cursor.ACTION.DEFAULT );
 					}
@@ -388,6 +417,8 @@ define(function( require )
 
 			case Entity.TYPE_MOB:
 			case Entity.TYPE_UNIT:
+			case Entity.TYPE_NPC_ABR:
+			case Entity.TYPE_NPC_BIONIC:
 
 				// Start rendering the lock on arrow
 				this.attachments.add({
@@ -413,7 +444,12 @@ define(function( require )
 					if (!count) {
 						return true;
 					}
-				
+
+					if(main.isOverWeight){
+						ChatBox.addText( DB.getMessage(243), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
+						return true;
+					}
+
 					if(PACKETVER.value >= 20180307) {
 						pkt        = new PACKET.CZ.REQUEST_ACT2();
 					} else {
@@ -462,6 +498,8 @@ define(function( require )
 			case Entity.TYPE_HOM:
 			case Entity.TYPE_MOB:
 			case Entity.TYPE_UNIT:
+			case Entity.TYPE_NPC_ABR:
+			case Entity.TYPE_NPC_BIONIC:
 				if (Entity.Manager.getFocusEntity()) {
 					Network.sendPacket(new PACKET.CZ.CANCEL_LOCKON());
 				}
@@ -533,6 +571,26 @@ define(function( require )
 		}
 	}
 
+	function canAttackEntity() {
+			if(this === Session.Entity) {
+				return false;
+			}
+			// Show attack cursor on non-party members (PvP)
+		 	else if ( Session.mapState.isPVP ) {
+				if ( Session.hasParty && getModule('UI/Components/PartyFriends/PartyFriends').isGroupMember( this.display.name ) ) {
+					return false;
+				}
+				return true;
+			}
+			// Show attack cursor on non-guild members (GvG)
+			else if( Session.mapState.isGVG ) {
+				if(Session.Entity.GUID > 0 && this.GUID !== Session.Entity.GUID || (this.GUID == 0 && this !== Session.Entity)) { // 0 = no guild, can be attacked by anyone
+					return true;
+				}
+			}
+			return false;
+	}
+
 	/**
 	 * Export
 	 */
@@ -546,5 +604,6 @@ define(function( require )
 		this.onFocusEnd    = onFocusEnd;
 		this.onRoomEnter   = onRoomEnter;
 		this.onContextMenu = onContextMenu;
+		this.canAttackEntity = canAttackEntity;
 	};
 });

@@ -15,9 +15,12 @@ define(function (require) {
 	 */
 	var DB = require('DB/DBManager');
 	var Network = require('Network/NetworkManager');
+	var PACKETVER = require('Network/PacketVerManager');
 	var PACKET = require('Network/PacketStructure');
-	var Quest = require('UI/Components/Quest/Quest');
 	var jQuery = require('Utils/jquery');
+	
+	// Version Dependent UIs
+	var Quest = require('UI/Components/Quest/Quest');
 
 	/**
 	 * Quest List
@@ -70,7 +73,7 @@ define(function (require) {
 			}
 			quest_list[local_quest.questID] = (local_quest);
 		}
-		Quest.setQuestList(quest_list);
+		Quest.getUI().setQuestList(quest_list);
 	}
 
 
@@ -118,7 +121,7 @@ define(function (require) {
 				quest.hunt_list[ID] = local_hunt; // prefer huntid over the mobGID
 			}
 		}
-		Quest.addQuest(quest, quest.questID);
+		Quest.getUI().addQuest(quest, quest.questID);
 	}
 
 
@@ -133,8 +136,8 @@ define(function (require) {
 			let ID = (local_hunt.huntID ? local_hunt.huntID : local_hunt.mobGID);
 
 			if (local_hunt.questID !== undefined) { // server sent info with questID
-				if (Quest.questExists(local_hunt.questID)) {
-					Quest.updateMissionHunt(local_hunt, local_hunt.questID, ID);
+				if (Quest.getUI().questExists(local_hunt.questID)) {
+					Quest.getUI().updateMissionHunt(local_hunt, local_hunt.questID, ID);
 				} else {
 					// create new one
 					var quest_info = DB.getQuestInfo(local_hunt.questID)
@@ -168,12 +171,12 @@ define(function (require) {
 						maxCount: local_hunt.maxCount || 0,
 						mobName: local_hunt.mobName || "",
 					};
-					Quest.addQuest(local_quest, local_quest.questID)
+					Quest.getUI().addQuest(local_quest, local_quest.questID)
 				}
 			} else { // server sent info with huntID
-				let quest_saved_id = Quest.getQuestIDByServerID(ID);
+				let quest_saved_id = Quest.getUI().getQuestIDByServerID(ID);
 				if (quest_saved_id > 0) { // update quest
-					Quest.updateMissionHunt(local_hunt, quest_saved_id, ID);
+					Quest.getUI().updateMissionHunt(local_hunt, quest_saved_id, ID);
 				}
 			}
 		}
@@ -186,7 +189,7 @@ define(function (require) {
 	 * @param {object} pkt - PACKET.ZC.ACTIVE_QUEST
 	 */
 	function onActiveQuest(pkt) {
-		Quest.toggleQuestActive(pkt.questID, pkt.active);
+		Quest.getUI().toggleQuestActive(pkt.questID, pkt.active);
 	}
 
 
@@ -196,7 +199,7 @@ define(function (require) {
 	 * @param {object} pkt - PACKET.ZC.DEL_QUEST
 	 */
 	function onDeleteQuest(pkt) {
-		Quest.removeQuest(pkt.questID);
+		Quest.getUI().removeQuest(pkt.questID);
 	}
 
 	/**

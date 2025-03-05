@@ -19,22 +19,19 @@ define(function(require)
 	var Client             = require('Core/Client');
 	var jQuery             = require('Utils/jquery');
 	var Network            = require('Network/NetworkManager');
-	var PACKETVER        = require('Network/PacketVerManager');
+	var PACKETVER          = require('Network/PacketVerManager');
 	var PACKET             = require('Network/PacketStructure');
 	var InputBox           = require('UI/Components/InputBox/InputBox');
 	var ChatBox      	   = require('UI/Components/ChatBox/ChatBox');
-	var MiniMap;
-	if(PACKETVER.value >= 20180124) {
-		MiniMap          = require('UI/Components/MiniMapV2/MiniMapV2');
-	} else {
-		MiniMap          = require('UI/Components/MiniMap/MiniMap');
-	}
 	var Renderer           = require('Renderer/Renderer');
 	var Preferences        = require('Core/Preferences');
 	var UIManager          = require('UI/UIManager');
 	var UIComponent        = require('UI/UIComponent');
 	var htmlText           = require('text!./CashShop.html');
 	var cssText            = require('text!./CashShop.css');
+
+	// Version Dependent UIs
+	var MiniMap = require('UI/Components/MiniMap/MiniMap');
 
 	var CashShop = new UIComponent( 'CashShop', htmlText, cssText );
 
@@ -173,12 +170,6 @@ define(function(require)
 			CashShop.onResetCartListCashShop();
 		}
 		
-		MiniMap.ui.append('<button class="cashshopIcon"></button>');
-		MiniMap.ui.on('click', '.cashshopIcon', onClickIcon);
-
-		Client.loadFile(DB.INTERFACE_PATH + 'basic_interface/nc_cashshop.bmp', function(data){
-			MiniMap.ui.find('.cashshopIcon').css('backgroundImage', 'url('+ data +')');
-		});
 	};
 	
 	CashShop.onAppend = function OnAppend()
@@ -200,6 +191,13 @@ define(function(require)
 		this.magnet.RIGHT = _preferences.magnet_right;
 
 		//this.ui.find('.titlebar .mini').trigger('mousedown');
+
+		MiniMap.getUI().ui.append('<button class="cashshopIcon"></button>');
+		MiniMap.getUI().ui.on('click', '.cashshopIcon', onClickIcon);
+
+		Client.loadFile(DB.INTERFACE_PATH + 'basic_interface/nc_cashshop.bmp', function(data){
+			MiniMap.getUI().ui.find('.cashshopIcon').css('backgroundImage', 'url('+ data +')');
+		});
 	};
 
 	/**

@@ -155,15 +155,14 @@ requirejs(
                                 );
                             }
 
-                            if (msg.uid) {
-                                postMessage({
-                                    uid: msg.uid,
-                                    arguments: [result, error, msg.data],
-                                });
-                            }
-                        }
-                    );
-                    break;
+					if (msg.uid) {
+						postMessage({
+							uid:       msg.uid,
+							arguments: [ result, error, msg.data ]
+						});
+					}
+				});
+				break;
 
                 // Search a file in Client
                 case 'SEARCH_FILE':

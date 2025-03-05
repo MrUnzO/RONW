@@ -4,37 +4,71 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
     var Session = require('Engine/SessionStorage');
     var Network = require('Network/NetworkManager');
     var PACKET = require('Network/PacketStructure');
+    var Configs = require('Core/Configs');
 
-    function AIDriver() {
+    function AIDriver(type) {
+        this.type = type; // 'homunculus' or 'mercenary'
+        this.msg = {};
+        this.status = null;
     }
 
-    AIDriver.init = function init() {
-		var code = '';
-		
-		if(Session.homCustomAI){
-			code += `
-				dofile ("./AI/USER_AI/AI.lua")
-			`;
-		} else {
-			code += `
-				dofile ("./AI/AI.lua")
-			`;
-		}
-		
-		code +=`
+    AIDriver.prototype.getConfig = function getConfig() {
+        switch (this.type) {
+            case 'homunculus':
+                return {
+                    id: Session.homunId,
+                    aggressiveKey: 'HOM_AGGRESSIVE',
+                    aiPath: Session.homCustomAI ? "/AI/USER_AI/AI" : "/AI/AI",
+                    logPrefix: 'homAI'
+                };
+            case 'mercenary':
+                return {
+                    id: Session.mercId,
+                    aggressiveKey: 'MER_AGGRESSIVE',
+                    aiPath: Session.merCustomAI ? "/AI/USER_AI/AI_M" : "/AI/AI_M",
+                    logPrefix: 'merAI'
+                };
+            default:
+                throw new Error('Invalid AI type');
+        }
+    };
+
+    AIDriver.prototype.init = function init() {
+        var config = this.getConfig();
+        var clientPath = Configs.get('remoteClient');
+
+        var code = `
+            package.path = '${clientPath}/?.lua'
+
+            local ai_main, ai_error = loadfile("${clientPath}${config.aiPath}.lua")
+
+            -- Dummy AI if there is no AI file
+            function AI()
+                return false
+            end
+
+            -- Init main AI if exists
+            if (ai_main) then
+                ai_main()
+                js.global.console:log("%c[${config.logPrefix}] %cAI initialized.", "color:#DD0078", "color:inherit")
+            else
+                js.global.console:warn("%c[${config.logPrefix}] %cCould not load AI: " .. ai_error, "color:#DD0078", "color:inherit")
+            end
+
+            -----------------------------------------
             function TraceAI (string)
                 return js.global:TraceAI(string)
             end
-            function MoveToOwner (id) 
+            function MoveToOwner (id)
                 return js.global:MoveToOwner(id)
             end
-            function Move (id,x,y) 
+            function Move (id,x,y)
                 return js.global:Move(id,x,y)
             end
-            function Attack (GID, targetGID) 
+            function Attack (GID, targetGID)
                 return js.global:Attack(GID, targetGID)
             end
-            function GetV (V_, id) 
+            function GetV (V_, id)
                 p = Split(js.global:GetV(V_, id), ",")
                 if (V_ == V_MOTION or V_ == V_OWNER or V_ == V_HOMUNTYPE or V_ == V_TARGET or V_ == V_ATTACKRANGE) then
                     return tonumber(p[1])
@@ -47,20 +81,20 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
                 end
                 return tonumber(p[1]), tonumber(p[2]), tonumber(p[3]), tonumber(p[4])
             end
-            function GetActors () 
-                actors = js.global:GetActors()
+            function GetActors ()
+                actors = js.global:GetActors('${this.type}')
                 res = {}
                 for i,v in ipairs(actors) do
                     res[i] = tonumber(v)
                 end
                 return res
             end
-            function GetTick () 
+            function GetTick ()
                 return js.global:GetTick()
             end
-            function GetMsg (id) 
+            function GetMsg (id)
                 res = {}
-                for i,v in ipairs(Split(js.global:GetMsg(id), ",")) do
+                for i,v in ipairs(Split(js.global:GetMsg('${this.type}', id), ",")) do
                     res[i] = tonumber(v)
                 end
                 return res
@@ -69,17 +103,19 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
                 -- print('GetResMsg', id)
                 return {0}
             end
-            function SkillObject (id,level,skill,target) 
+            function SkillObject (id,level,skill,target)
                 print('SkillObject', id, level, skill, target)
             end
-            function SkillGround (id,level,skill,x,y) 
+            function SkillGround (id,level,skill,x,y)
                 print('SkillGround', id, level, skill, x, y)
             end
-            function IsMonster (id) 
+            function IsMonster (id)
                 return js.global:IsMonster(id)
             end
-            
-            
+            function GetState ()
+                return MyState
+            end
+
             -----------------------------------------
             function Split(s, delimiter)
                 result = {};
@@ -89,20 +125,48 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
                 return result;
             end
         `;
-		AIDriver.exec(code);
+        this.exec(code);
+    };
 
-    }
+    AIDriver.prototype.getState = function getState() {
+        var state = null;
+        try {
+            var fn = fengari.load('return GetState()');
+            state = fn();
+        } catch (e) {
+            var config = this.getConfig();
+            console.error(`%c[${config.logPrefix}] %cFailed to get AI state: `, "color:#DD0078", "color:inherit", e);
+        }
+        return state;
+    };
 
-    var msg = {};
+    AIDriver.prototype.setmsg = function setmsg(id, str) {
+        this.msg[id] = str;
+    };
 
-    AIDriver.setmsg = function setmsg(homId, str) {
-        msg[homId] = str;
-    }
+    AIDriver.prototype.exec = function exec(code) {
+        var config = this.getConfig();
+        try {
+            fengari.load(code)();
+        } catch (e) {
+            console.error(`%c[${config.logPrefix}] %cAI Error: `, "color:#DD0078", "color:inherit", e);
+        }
+    };
 
-    window.GetMsg = function GetMsg(id) {
-        if (id in msg) {
-            let res = msg[id];
-            delete msg[id];
+    AIDriver.prototype.reset = function reset() {
+        this.init();
+    };
+
+    // Create singleton instances for homunculus and mercenary
+    var homAI = new AIDriver('homunculus');
+    var merAI = new AIDriver('mercenary');
+
+    // Setup global functions that need to be shared between both AIs
+    window.GetMsg = function GetMsg(type, id) {
+        var ai = type === 'homunculus' ? homAI : merAI;
+        if (id in ai.msg) {
+            let res = ai.msg[id];
+            delete ai.msg[id];
             return res;
         }
         return '';
@@ -115,7 +179,7 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
 
         var entity = EntityManager.get(Number(id));
 
-        if (entity.objecttype === entity.TYPE_MOB) {
+        if (entity.objecttype === entity.TYPE_MOB || entity.objecttype === entity.TYPE_NPC_ABR || entity.objecttype === entity.TYPE_NPC_BIONIC) {
             return 1;
         }
         return 0;
@@ -151,30 +215,34 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
         Network.sendPacket(pkt);
     }
 
-    window.status = null;
-    window.GetActors = function () {
-        AIDriver.exec('js.global.status = MyState')
-        var res = [0]
+    window.GetActors = function GetActors(type) {
+        var ai = type === 'homunculus' ? homAI : merAI;
+        var config = ai.getConfig();
+
+        // Execute AI state check
+        ai.status = ai.getState();
+
+        var res = [0];
         EntityManager.forEach((item) => {
             res.push(item.GID)
         });
 
-        // aggressive logic
+        // Aggressive logic
         if (res.length > 3) {
-            if (localStorage.getItem('AGGRESSIVE') == 1) {
+            if (localStorage.getItem(config.aggressiveKey) == 1) {
                 res.forEach((item) => {
-                    if (item != 0 && item != Session.AID && item != Session.homunId) {
-                        var entity = EntityManager.get(Number(item))
-                        if (entity && entity.objecttype === Entity.TYPE_MOB) {
-                            if (status == 0) { //idle = 0
-                                // attak
-                                AIDriver.setmsg(Session.homunId, '3,'+ item);
+                    if (item != 0 && item != Session.AID && item != config.id) {
+                        var entity = EntityManager.get(Number(item));
+                        if (entity && (entity.objecttype === Entity.TYPE_MOB || entity.objecttype === Entity.TYPE_NPC_ABR || entity.objecttype === Entity.TYPE_NPC_BIONIC)) {
+                            if (ai.status == 0) { //idle = 0
+                                // attack
+                                ai.setmsg(config.id, '3,' + item);
                             }
                         }
                     }
-                })
+                });
             } else {
-                AIDriver.setmsg(Session.homunId, status);
+                ai.setmsg(config.id, ai.status);
             }
         }
         return res;
@@ -203,26 +271,29 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
                     var avtors = window.GetActors();
                     return EntityManager.get(Number(avtors[id])).action;
                 }
+                if (entity === null) {
+                    return 0;
+                }
                 return entity.action;
 
             case 4: // V_ATTACKRANGE ok
                 // Returns the attack range (Not implemented yet; temporarily set as 1 cell)
-                if(entity){
-					return entity.attack_range || 1;
-				}
+                if(entity !== null){
+                    return entity.attack_range || 1;
+                }
                 return 1;
 
             case 5: // V_TARGET ok
-                if (id < 1 || typeof (id) !== 'number') {
+                if (entity === null || id < 1 || typeof (id) !== 'number') {
                     return 0;
                 }
                 return entity.targetGID;
 
             case 6: // V_SKILLATTACKRANGE
                 // Returns the skill attack range (Not implemented yet)
-                if(entity){
-					return entity.attack_range || 1;
-				}
+                if(entity !== null){
+                    return entity.attack_range || 1;
+                }
                 return 1;
 
             case 7: // V_HOMUNTYPE ok
@@ -244,29 +315,32 @@ define(['Renderer/EntityManager', 'Renderer/Renderer', 'Vendors/fengari-web', 'R
                 return entity.life.sp_max;
 
             case 12: // V_MERTYPE
-                console.warn("V_MERTYPE ", id, entity)
-                return 0;
+                if (entity === null) {
+                    return 0;
+                }
+                return Number((entity._job + '').substring(1));
+
+            case 13: // V_POSITION_APPLY_SKILLATTACKRANGE
+                if (entity !== null) {
+                    return entity.position[0] + ',' + entity.position[1];
+                }
+                return '-1,-1'
+
+            case 14: // V_SKILLATTACKRANGE_LEVEL
+                // Returns the skill attack range for the skill level (Not implemented yet)
+                if(entity !== null){
+                    return entity.attack_range || 1;
+                }
+                return 1;
 
             default:
                 console.error("unknown V_ ", V_, entity)
                 return 0;
         }
-    }
+    };
 
-    AIDriver.exec = function exec(code) {
-        try {
-			fengari.load(code)();
-        } catch (e) {
-            console.error('AI_error: ', e);
-        }
-    }
-	
-	AIDriver.reset = function reset(){
-		
-		this.init();
-	}
-
-    AIDriver.init();
-
-    return AIDriver;
+    return {
+        homunculus: homAI,
+        mercenary: merAI
+    };
 });

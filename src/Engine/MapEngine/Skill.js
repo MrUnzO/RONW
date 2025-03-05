@@ -32,7 +32,7 @@ define(function( require )
 	var ChatBox               = require('UI/Components/ChatBox/ChatBox');
 	var SkillTargetSelection  = require('UI/Components/SkillTargetSelection/SkillTargetSelection');
 	var Guild                 = require('UI/Components/Guild/Guild');
-	var SkillListMER          = require('UI/Components/SkillListMER/SkillListMER');
+	var SkillListMH           = require('UI/Components/SkillListMH/SkillListMH');
 	var ItemSelection         = require('UI/Components/ItemSelection/ItemSelection');
 	var MakeArrowSelection    = require('UI/Components/MakeArrowSelection/MakeArrowSelection');
 	var MakeItemSelection     = require('UI/Components/MakeItemSelection/MakeItemSelection');
@@ -41,16 +41,12 @@ define(function( require )
 	var NpcMenu               = require('UI/Components/NpcMenu/NpcMenu');
 	var Sense                 = require('UI/Components/Sense/Sense');
 	var Announce              = require('UI/Components/Announce/Announce');
-	var UIVersionManager      = require('UI/UIVersionManager');
 	var Renderer              = require('Renderer/Renderer');
 	var getModule             = require;
 
-	var SkillWindow;
-	if (UIVersionManager.getSkillListVersion() === 0) {
-		SkillWindow = require('UI/Components/SkillListV0/SkillListV0');
-	} else {
-		SkillWindow = require('UI/Components/SkillList/SkillList');
-	}
+	// Version Dependent UIs
+	var SkillWindow = require('UI/Components/SkillList/SkillList');
+
 
 	/**
 	 * Spam an effect
@@ -204,7 +200,7 @@ define(function( require )
 	 */
 	function onSkillList( pkt )
 	{
-		SkillWindow.setSkills( pkt.skillList );
+		SkillWindow.getUI().setSkills( pkt.skillList );
 	}
 
 
@@ -215,7 +211,7 @@ define(function( require )
 	 */
 	function onSkillUpdate( pkt )
 	{
-		SkillWindow.updateSkill( pkt );
+		SkillWindow.getUI().updateSkill( pkt );
 	}
 
 
@@ -238,7 +234,7 @@ define(function( require )
 	 */
 	function onSkillAdded( pkt)
 	{
-		SkillWindow.addSkill( pkt.data );
+		SkillWindow.getUI().addSkill( pkt.data );
 	}
 
 
@@ -249,7 +245,7 @@ define(function( require )
 	 */
 	function onAutoCastSkill( pkt )
 	{
-		SkillWindow.useSkill(pkt.data);
+		SkillWindow.getUI().useSkill(pkt.data);
 	}
 
 
@@ -294,12 +290,12 @@ define(function( require )
 				ChatBox.addText( DB.getMessage(491), ChatBox.TYPE.BLUE, ChatBox.FILTER.ITEM);
 
 				// Remove old item
-				var item = Inventory.removeItem(pkt.index, 1);
+				var item = Inventory.getUI().removeItem(pkt.index, 1);
 
 				// Add new item updated
 				if (item) {
 					item.IsIdentified = true;
-					Inventory.addItem(item);
+					Inventory.getUI().addItem(item);
 				}
 				break;
 
@@ -328,6 +324,55 @@ define(function( require )
 			if (index >= -1) {
 				var pkt   = new PACKET.CZ.SELECTAUTOSPELL();
 				pkt.SKID  = index;
+				Network.sendPacket(pkt);
+			}
+		};
+	}
+	
+
+	/**
+	* Get a list of players under the effect of devotion
+	*
+	* @param {object} pkt - PACKET.ZC.DEVOTIONLIST
+	*/
+	function onDevotionList( pkt )
+	{
+		EffectManager.remove(null, pkt.myAID, EffectConst.EF_LINELINK);
+		
+		pkt.AID.forEach((tgtAID) => {
+			if(tgtAID > 0){
+				var EF_Init_Par = {
+					effectId: EffectConst.EF_LINELINK,
+					ownerAID: pkt.myAID,
+					otherAID: tgtAID,
+					persistent: true
+				};
+
+				EffectManager.spam( EF_Init_Par );
+			}
+		});
+	}
+
+
+	/**
+	 * Get a list of skills to use for auto-spell
+	 *
+	 * @param {object} pkt - PACKET.ZC.SKILL_SELECT_REQUEST
+	 */
+	function onSelectSkillList( pkt )
+	{
+		if (!pkt.SKID.length) {
+			return;
+		}
+
+		ItemSelection.append();
+		ItemSelection.setList(pkt.SKID, true);
+		ItemSelection.setTitle(DB.getMessage(697));
+		ItemSelection.onIndexSelected = function(index) {
+			if (index >= -1) {
+				var pkt   = new PACKET.CZ.SKILL_SELECT_RESPONSE();
+				pkt.SKID  = index;
+				pkt.why  = pkt.why;
 				Network.sendPacket(pkt);
 			}
 		};
@@ -519,13 +564,14 @@ define(function( require )
 	 *
 	 * @param {number} skill id
 	 */
-	SkillWindow.onIncreaseSkill = Guild.onIncreaseSkill = SkillListMER.onIncreaseSkill = function onIncreaseSkill( SKID )
+	function onIncreaseSkill( SKID )
 	{
 		var pkt  = new PACKET.CZ.UPGRADE_SKILLLEVEL();
 		pkt.SKID = SKID;
 
 		Network.sendPacket(pkt);
 	};
+	Guild.onIncreaseSkill = SkillListMH.homunculus.onIncreaseSkill = SkillListMH.mercenary.onIncreaseSkill = onIncreaseSkill;
 
 
 	/**
@@ -535,7 +581,7 @@ define(function( require )
 	 * @param {number} level
 	 * @param {optional|number} target game id
 	 */
-	SkillWindow.onUseSkill = Guild.onUseSkill = SkillListMER.onUseSkill = SkillTargetSelection.onUseSkillToId  = function onUseSkill( id, level, targetID)
+	function onUseSkill( id, level, targetID)
 	{
 		var entity, skill, target, pkt, out;
 		var count, range;
@@ -546,6 +592,11 @@ define(function( require )
 			entity = EntityManager.get(Session.homunId);
 		} else {
 			entity = Session.Entity;
+			//Fixme: this check is needed, but not here, because flywing and other AUTORUN_SKILL then doesn't work
+			/*if(entity.isOverWeight){
+				ChatBox.addText( DB.getMessage(243), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL);
+				return true;
+			}*/
 		}
 
 		// Client side minimum delay
@@ -554,7 +605,7 @@ define(function( require )
 		}
 
 		target = EntityManager.get(targetID) || entity;
-		skill  = SkillWindow.getSkillById(id);
+		skill  = SkillWindow.getUI().getSkillById(id);
 		out    = [];
 
 		if (skill) {
@@ -622,7 +673,7 @@ define(function( require )
 		pkt.dest[1] = out[(count-1)*2 + 1];
 		Network.sendPacket(pkt);
 	};
-
+	Guild.onUseSkill = SkillListMH.homunculus.onUseSkill = SkillListMH.mercenary.onUseSkill = SkillTargetSelection.onUseSkillToId = onUseSkill;
 
 
 	/**
@@ -644,6 +695,10 @@ define(function( require )
 			entity = EntityManager.get(Session.homunId);
 		} else {
 			entity = Session.Entity;
+			if(entity.isOverWeight){
+				ChatBox.addText( DB.getMessage(243), ChatBox.TYPE.ERROR, ChatBox.FILTER.SKILL_FAIL);
+				return true;
+			}
 		}
 
 		// Client side minimum delay
@@ -652,7 +707,7 @@ define(function( require )
 		}
 
 		pos    = entity.position;
-		skill  = SkillWindow.getSkillById(id);
+		skill  = SkillWindow.getUI().getSkillById(id);
 		out    = [];
 
 		if (skill) {
@@ -777,11 +832,18 @@ define(function( require )
 		Sense.setWindow(pkt);
 	}
 
+	function hookSkillWindow(){
+		SkillWindow.getUI().onIncreaseSkill = onIncreaseSkill;
+		SkillWindow.getUI().onUseSkill = onUseSkill;
+	}
+
 	/**
 	 * Initialize
 	 */
 	return function SkillEngine()
 	{
+		hookSkillWindow();
+
 		Network.hookPacket( PACKET.ZC.SKILLINFO_LIST,         onSkillList );
 		Network.hookPacket( PACKET.ZC.SKILLINFO_UPDATE,       onSkillUpdate );
 		Network.hookPacket( PACKET.ZC.SKILLINFO_UPDATE2,      onSkillUpdate );
@@ -795,10 +857,12 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.NOTIFY_EFFECT2,         onEffect );
 		Network.hookPacket( PACKET.ZC.NOTIFY_EFFECT3,         onEffect );
 		Network.hookPacket( PACKET.ZC.NOTIFY_GROUNDSKILL,     onSkillToGround );
+		Network.hookPacket( PACKET.ZC.SKILL_SCALE,            onSkillToGround );
 		Network.hookPacket( PACKET.ZC.AUTORUN_SKILL,          onAutoCastSkill );
 		Network.hookPacket( PACKET.ZC.ITEMIDENTIFY_LIST,      onIdentifyList );
 		Network.hookPacket( PACKET.ZC.ACK_ITEMIDENTIFY,       onIdentifyResult );
 		Network.hookPacket( PACKET.ZC.AUTOSPELLLIST,          onAutoSpellList );
+		Network.hookPacket( PACKET.ZC.SKILL_SELECT_REQUEST,   onSelectSkillList );
 		Network.hookPacket( PACKET.ZC.WARPLIST,               onTeleportList );
 		Network.hookPacket( PACKET.ZC.NOTIFY_MAPINFO,         onTeleportResult );
 		Network.hookPacket( PACKET.ZC.ACK_REMEMBER_WARPPOINT, onMemoResult );
@@ -813,5 +877,6 @@ define(function( require )
 		Network.hookPacket( PACKET.ZC.STARSKILL,              onTaekwonMission );
 		Network.hookPacket( PACKET.ZC.MSG_SKILL,        	  onMessageSkill );
 		Network.hookPacket( PACKET.ZC.MONSTER_INFO,           onSense );
+		Network.hookPacket( PACKET.ZC.DEVOTIONLIST,           onDevotionList );
 	};
 });

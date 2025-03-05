@@ -66,7 +66,7 @@ define(function (require) {
             sortBySize = true;
         var list = [];
         this.dataPath = dataPath ? dataPath : false;
-		
+
         // load GRFs from a file (DATA.INI)
         if (typeof grfList === 'string') {
             if (fs) {
@@ -423,6 +423,7 @@ define(function (require) {
                         break;
 
                     case 'rsm':
+					case 'rsm2':
                         result = new Model(buffer);
                         break;
 
@@ -431,7 +432,7 @@ define(function (require) {
                         break;
 
                     case 'str':
-                        result = new Str(buffer);
+                        result = new Str(buffer, args?.texturePath ?? '');
                         break;
 
                     default:

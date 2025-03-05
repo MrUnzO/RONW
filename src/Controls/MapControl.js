@@ -17,6 +17,7 @@ define(function( require )
 	var DB            = require('DB/DBManager');
 	var UIManager     = require('UI/UIManager');
 	var Cursor        = require('UI/CursorManager');
+	var Entity        = require('Renderer/Entity/Entity');
 	var InputBox      = require('UI/Components/InputBox/InputBox');
 	var ChatBox       = require('UI/Components/ChatBox/ChatBox');
 	var Equipment     = require('UI/Components/Equipment/Equipment');
@@ -114,7 +115,7 @@ define(function( require )
 			case 1:
 				Session.moveAction = null;
 				Session.autoFollow = false;
-				
+
 				var stop        = false;
 				if(entityOver != Session.Entity){
 					if (entityFocus && entityFocus != entityOver) {
@@ -136,7 +137,7 @@ define(function( require )
 						}
 					}
 				}
-				
+
 				// Start walking
 				if (this.onRequestWalk) {
 					this.onRequestWalk();
@@ -149,36 +150,33 @@ define(function( require )
 				_rightClickPosition[1] = Mouse.screen.y;
 
 				if (!KEYS.SHIFT && KEYS.ALT && !KEYS.CTRL) {
-					
-					Cursor.setType( Cursor.ACTION.ROTATE );
 					Camera.rotate( false );
 
-					AIDriver.setmsg(Session.homunId, '1,'+ Mouse.world.x + ',' + Mouse.world.y);
-
-					if (entityOver) {
-						AIDriver.setmsg(Session.homunId, '3,'+ entityOver.GID);
+					if (entityOver && entityOver != Session.Entity && entityOver.objecttype != Entity.TYPE_EFFECT && entityOver.objecttype != Entity.TYPE_TRAP) {
+						AIDriver.homunculus.setmsg(Session.homunId, '3,'+ entityOver.GID);
+						AIDriver.mercenary.setmsg(Session.mercId, '3,'+ entityOver.GID);
+					} else {
+						AIDriver.homunculus.setmsg(Session.homunId, '1,'+ Mouse.world.x + ',' + Mouse.world.y);
+						AIDriver.mercenary.setmsg(Session.mercId, '1,'+ Mouse.world.x + ',' + Mouse.world.y);
 					}
-					
-				} else if (KEYS.SHIFT && entityOver && entityOver != Session.Entity ) {
-					
-					Session.autoFollowTarget = entityOver;
-					Session.autoFollow = true;
-					onAutoFollow();
-					
-					stop = stop || entityOver.onMouseDown();
-					stop = stop || entityOver.onFocus();
-					EntityManager.setFocusEntity(entityOver);
 
-					// Know if propagate to map mousedown
-					if (stop) {
-						return;
-					}
-					
 				} else {
-					
+					if (entityOver && entityOver != Session.Entity && entityOver.objecttype != Entity.TYPE_EFFECT && entityOver.objecttype != Entity.TYPE_TRAP) {
+						if (KEYS.SHIFT) {	// Shift + Right click on an entity
+							Session.autoFollowTarget = entityOver;
+							Session.autoFollow = true;
+							onAutoFollow();
+
+						}
+
+						// Right click on a NPC/Mob/Unit
+						entityOver.onMouseDown();
+						entityOver.onFocus();
+						EntityManager.setFocusEntity(entityOver);
+					}
+
 					Cursor.setType( Cursor.ACTION.ROTATE );
 					Camera.rotate( true );
-					
 				}
 				break;
 		}
@@ -190,7 +188,7 @@ define(function( require )
 	 */
 	function onMouseUp( event )
 	{
-		var entity;
+		var entity, ET;
 		var action = event && event.which || 1;
 
 		// Not rendering yet
@@ -206,10 +204,11 @@ define(function( require )
 				entity = EntityManager.getFocusEntity();
 
 				if (entity) {
+					ET = entity.constructor;
 					entity.onMouseUp();
 
 					// Entity lock is only on MOB type (except when Touch Targeting is active)
-					if (Preferences.noctrl === false || (entity.objecttype !== entity.constructor.TYPE_MOB && !Session.TouchTargeting )) {
+					if (Preferences.noctrl === false || (![ET.TYPE_MOB, ET.TYPE_NPC_ABR, ET.TYPE_NPC_BIONIC].includes(entity.objecttype) && !Session.TouchTargeting )) {
 						EntityManager.setFocusEntity(null);
 						entity.onFocusEnd();
 					}
@@ -313,12 +312,18 @@ define(function( require )
 		}
 
 		// Can't drop an item on map if Equipment window is open
-		if (Equipment.ui.is(':visible') &&  data.type === 'item') {
+		if (Equipment.getUI().ui.is(':visible') &&  data.type === 'item') {
 			ChatBox.addText(
 				DB.getMessage(189),
 				ChatBox.TYPE.ERROR,
 				ChatBox.FILTER.ITEM
 			);
+			return false;
+		}
+
+		// Item Drop Lock
+		var InventoryVersion = UIManager.getComponent('Inventory').name;
+		if (InventoryVersion !== 'InventoryV0' && Inventory.getUI().itemlock === true) {
 			return false;
 		}
 
@@ -343,7 +348,7 @@ define(function( require )
 				// Have to specify how much
 				if (item.count > 1) {
 					InputBox.append();
-					InputBox.setType('number', false, item.count);
+					InputBox.setType('item', false, item.count, item.ITID);
 					InputBox.onSubmitRequest = function onSubmitRequest( count ) {
 						InputBox.remove();
 						MapControl.onRequestDropItem(
@@ -367,7 +372,7 @@ define(function( require )
 
 		return false;
 	}
-	
+
 	/**
 	 * Auto follow logic
 	 */
@@ -375,14 +380,14 @@ define(function( require )
 		if(Session.autoFollow){
 			var player = Session.Entity;
 			var target = Session.autoFollowTarget;
-			
+
 			var dx = Math.abs(player.position[0] - target.position[0]);
 			var dy = Math.abs(player.position[1] - target.position[1]);
-			
+
 			// Use square based range check instead of Pythagorean because of diagonals
 			if( dx>1 || dy>1 ){
 				var dest = [0,0];
-				
+
 				// If there is valid cell send move packet
 				if (checkFreeCell(Math.round(target.position[0]), Math.round(target.position[1]), 1, dest)) {
 					var pkt;
@@ -395,7 +400,7 @@ define(function( require )
 					Network.sendPacket(pkt);
 				}
 			}
-			
+
 			Events.setTimeout( onAutoFollow, 500);
 		}
 	}
