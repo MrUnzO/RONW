@@ -41,7 +41,7 @@
 		"eslint-config-prettier": "8.6.0",
 		"eslint-plugin-prettier": "4.2.1",
 		"live-server": "^1.2.2",
-		"nw": "0.71.1-sdk",
+		"nw": "^0.71.1-sdk",
 		"nwjs-builder-phoenix": "^1.15.0",
 		"prettier": "2.8.3",
 		"requirejs": "^2.3.6",

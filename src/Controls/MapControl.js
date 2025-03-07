@@ -7,119 +7,105 @@
  *
  * @author Vincent Thibault
  */
-define(function( require )
-{
+define(function (require) {
 	'use strict';
 
-
 	// Load dependencies
-	var jQuery        = require('Utils/jquery');
-	var DB            = require('DB/DBManager');
-	var UIManager     = require('UI/UIManager');
-	var Cursor        = require('UI/CursorManager');
-	var Entity        = require('Renderer/Entity/Entity');
-	var InputBox      = require('UI/Components/InputBox/InputBox');
-	var ChatBox       = require('UI/Components/ChatBox/ChatBox');
-	var Equipment     = require('UI/Components/Equipment/Equipment');
-	var Inventory     = require('UI/Components/Inventory/Inventory');
-	var ShortCut      = require('UI/Components/ShortCut/ShortCut');
-	var SkillTargetSelection      = require('UI/Components/SkillTargetSelection/SkillTargetSelection');
-	var Mouse         = require('Controls/MouseEventHandler');
-	var Mobile        = require('Core/Mobile');
-	var Renderer      = require('Renderer/Renderer');
-	var Camera        = require('Renderer/Camera');
+	var jQuery = require('Utils/jquery');
+	var DB = require('DB/DBManager');
+	var UIManager = require('UI/UIManager');
+	var Cursor = require('UI/CursorManager');
+	var Entity = require('Renderer/Entity/Entity');
+	var InputBox = require('UI/Components/InputBox/InputBox');
+	var ChatBox = require('UI/Components/ChatBox/ChatBox');
+	var Equipment = require('UI/Components/Equipment/Equipment');
+	var Inventory = require('UI/Components/Inventory/Inventory');
+	var ShortCut = require('UI/Components/ShortCut/ShortCut');
+	var SkillTargetSelection = require('UI/Components/SkillTargetSelection/SkillTargetSelection');
+	var Mouse = require('Controls/MouseEventHandler');
+	var Mobile = require('Core/Mobile');
+	var Renderer = require('Renderer/Renderer');
+	var Camera = require('Renderer/Camera');
 	var EntityManager = require('Renderer/EntityManager');
-	var Session       = require('Engine/SessionStorage');
-	var Preferences   = require('Preferences/Controls');
-	var KEYS          = require('Controls/KeyEventHandler');
-	var AIDriver      = require('Core/AIDriver');
-	var Altitude 	  = require('Renderer/Map/Altitude');
-	var PACKETVER     = require('Network/PacketVerManager');
-	var PACKET        = require('Network/PacketStructure');
-	var Network       = require('Network/NetworkManager');
-	var Events        = require('Core/Events');
+	var Session = require('Engine/SessionStorage');
+	var Preferences = require('Preferences/Controls');
+	var KEYS = require('Controls/KeyEventHandler');
+	var AIDriver = require('Core/AIDriver');
+	var Altitude = require('Renderer/Map/Altitude');
+	var PACKETVER = require('Network/PacketVerManager');
+	var PACKET = require('Network/PacketStructure');
+	var Network = require('Network/NetworkManager');
+	var Events = require('Core/Events');
 
 	require('Controls/ScreenShot');
-
 
 	/**
 	 * @var {int16[2]} screen position
 	 */
 	var _rightClickPosition = new Int16Array(2);
 
-
 	/**
 	 * @namespace MapControl
 	 */
 	var MapControl = {};
 
-
 	/**
 	 * Callback used when requesting to move somewhere
 	 */
-	MapControl.onRequestWalk = function(){};
-
+	MapControl.onRequestWalk = function () {};
 
 	/**
 	 * Callback used when request to stop move
 	 */
-	MapControl.onRequestStopWalk = function(){};
-
+	MapControl.onRequestStopWalk = function () {};
 
 	/**
 	 * Callback used when dropping an item to the map
 	 */
-	MapControl.onRequestDropItem = function(){};
-
+	MapControl.onRequestDropItem = function () {};
 
 	/**
 	 * Initializing the controller
 	 */
-	MapControl.init = function init()
-	{
+	MapControl.init = function init() {
 		Mobile.init();
 		Mobile.onTouchStart = onMouseDown.bind(this);
-		Mobile.onTouchEnd   = onMouseUp.bind(this);
+		Mobile.onTouchEnd = onMouseUp.bind(this);
 
-		jQuery( Renderer.canvas ).topDroppable({drop: onDrop.bind(this)}).droppable({tolerance: "pointer"});
+		jQuery(Renderer.canvas)
+			.topDroppable({ drop: onDrop.bind(this) })
+			.droppable({ tolerance: 'pointer' });
 
 		// Attach events
-		jQuery( Renderer.canvas )
-			.on('mousewheel DOMMouseScroll', onMouseWheel)
-			.on('dragover',                  onDragOver );
-			// .on('drop',                      onDrop.bind(this));
+		jQuery(Renderer.canvas).on('mousewheel DOMMouseScroll', onMouseWheel).on('dragover', onDragOver);
+		// .on('drop',                      onDrop.bind(this));
 
-		jQuery(window)
-			.on('mousedown.map',   onMouseDown.bind(this))
-			.on('mouseup.map',     onMouseUp.bind(this));
+		jQuery(window).on('mousedown.map', onMouseDown.bind(this)).on('mouseup.map', onMouseUp.bind(this));
 	};
-
 
 	/**
 	 * What to do when clicking on the map ?
 	 */
-	function onMouseDown( event )
-	{
-		var action = event && event.which || 1;
+	function onMouseDown(event) {
+		var action = (event && event.which) || 1;
 
 		if (!Mouse.intersect) {
 			return;
 		}
 
 		var entityFocus = EntityManager.getFocusEntity();
-		var entityOver  = EntityManager.getOverEntity();
+		var entityOver = EntityManager.getOverEntity();
 
 		switch (action) {
-
 			// Left click
 			case 1:
 				Session.moveAction = null;
 				Session.autoFollow = false;
 
-				var stop        = false;
-				if(entityOver != Session.Entity){
+				var stop = false;
+				if (entityOver != Session.Entity) {
 					if (entityFocus && entityFocus != entityOver) {
-						if(!(Session.TouchTargeting && !entityOver)) {
+						if (!(Session.TouchTargeting && !entityOver)) {
 							entityFocus.onFocusEnd();
 							EntityManager.setFocusEntity(null);
 						}
@@ -150,23 +136,22 @@ define(function( require )
 				_rightClickPosition[1] = Mouse.screen.y;
 
 				if (!KEYS.SHIFT && KEYS.ALT && !KEYS.CTRL) {
-					Camera.rotate( false );
+					Camera.rotate(false);
 
 					if (entityOver && entityOver != Session.Entity && entityOver.objecttype != Entity.TYPE_EFFECT && entityOver.objecttype != Entity.TYPE_TRAP) {
-						AIDriver.homunculus.setmsg(Session.homunId, '3,'+ entityOver.GID);
-						AIDriver.mercenary.setmsg(Session.mercId, '3,'+ entityOver.GID);
+						AIDriver.homunculus.setmsg(Session.homunId, '3,' + entityOver.GID);
+						AIDriver.mercenary.setmsg(Session.mercId, '3,' + entityOver.GID);
 					} else {
-						AIDriver.homunculus.setmsg(Session.homunId, '1,'+ Mouse.world.x + ',' + Mouse.world.y);
-						AIDriver.mercenary.setmsg(Session.mercId, '1,'+ Mouse.world.x + ',' + Mouse.world.y);
+						AIDriver.homunculus.setmsg(Session.homunId, '1,' + Mouse.world.x + ',' + Mouse.world.y);
+						AIDriver.mercenary.setmsg(Session.mercId, '1,' + Mouse.world.x + ',' + Mouse.world.y);
 					}
-
 				} else {
 					if (entityOver && entityOver != Session.Entity && entityOver.objecttype != Entity.TYPE_EFFECT && entityOver.objecttype != Entity.TYPE_TRAP) {
-						if (KEYS.SHIFT) {	// Shift + Right click on an entity
+						if (KEYS.SHIFT) {
+							// Shift + Right click on an entity
 							Session.autoFollowTarget = entityOver;
 							Session.autoFollow = true;
 							onAutoFollow();
-
 						}
 
 						// Right click on a NPC/Mob/Unit
@@ -175,21 +160,19 @@ define(function( require )
 						EntityManager.setFocusEntity(entityOver);
 					}
 
-					Cursor.setType( Cursor.ACTION.ROTATE );
-					Camera.rotate( true );
+					Cursor.setType(Cursor.ACTION.ROTATE);
+					Camera.rotate(true);
 				}
 				break;
 		}
 	}
 
-
 	/**
 	 * What to do when stop clicking on the map ?
 	 */
-	function onMouseUp( event )
-	{
+	function onMouseUp(event) {
 		var entity, ET;
-		var action = event && event.which || 1;
+		var action = (event && event.which) || 1;
 
 		// Not rendering yet
 		if (!Mouse.intersect) {
@@ -197,7 +180,6 @@ define(function( require )
 		}
 
 		switch (action) {
-
 			// Left click
 			case 1:
 				// Remove entity picking ?
@@ -208,7 +190,7 @@ define(function( require )
 					entity.onMouseUp();
 
 					// Entity lock is only on MOB type (except when Touch Targeting is active)
-					if (Preferences.noctrl === false || (![ET.TYPE_MOB, ET.TYPE_NPC_ABR, ET.TYPE_NPC_BIONIC].includes(entity.objecttype) && !Session.TouchTargeting )) {
+					if (Preferences.noctrl === false || (![ET.TYPE_MOB, ET.TYPE_NPC_ABR, ET.TYPE_NPC_BIONIC].includes(entity.objecttype) && !Session.TouchTargeting)) {
 						EntityManager.setFocusEntity(null);
 						entity.onFocusEnd();
 					}
@@ -222,8 +204,8 @@ define(function( require )
 
 			// Right Click
 			case 3:
-				Cursor.setType( Cursor.ACTION.DEFAULT );
-				Camera.rotate( false );
+				Cursor.setType(Cursor.ACTION.DEFAULT);
+				Camera.rotate(false);
 
 				// Seems like it's how the official client handle the contextmenu
 				// Just check for the same position on mousedown and mouseup
@@ -238,16 +220,14 @@ define(function( require )
 		}
 	}
 
-
 	/**
 	 * Zoom feature
 	 */
-	function onMouseWheel( event )
-	{
-		if(Mouse.state === Mouse.MOUSE_STATE.USESKILL){
-			if(event.originalEvent.wheelDelta > 0){
+	function onMouseWheel(event) {
+		if (Mouse.state === Mouse.MOUSE_STATE.USESKILL) {
+			if (event.originalEvent.wheelDelta > 0) {
 				SkillTargetSelection.setSkillLevelDelta(1);
-			}else{
+			} else {
 				SkillTargetSelection.setSkillLevelDelta(-1);
 			}
 			return;
@@ -256,46 +236,40 @@ define(function( require )
 		// Cross browser delta
 		var delta;
 		if (event.originalEvent.wheelDelta) {
-			delta = event.originalEvent.wheelDelta / 120 ;
+			delta = event.originalEvent.wheelDelta / 120;
 			if (window.opera) {
 				delta = -delta;
 			}
-		}
-		else if (event.originalEvent.detail) {
+		} else if (event.originalEvent.detail) {
 			delta = -event.originalEvent.detail;
 		}
 
 		Camera.setZoom(delta);
 	}
 
-
-
 	/**
 	 * Allow dropping data
 	 */
-	function onDragOver(event)
-	{
+	function onDragOver(event) {
 		event.stopImmediatePropagation();
 		return false;
 	}
 
-
-
 	/**
 	 * Drop items to the map
 	 */
-	function onDrop( event )
-	{
+	function onDrop(event) {
 		var item, data;
 
 		try {
 			data = window._OBJ_DRAG_;
-		}
-		catch(e) {}
+			console.log(data);
+		} catch (e) {}
 
 		// Stop default behavior
 		event.stopImmediatePropagation();
 		if (!data) {
+			console.log('no data');
 			return false;
 		}
 
@@ -306,18 +280,13 @@ define(function( require )
 			UIManager.getComponent(data.from).ui.trigger('mouseleave');
 		}
 
-		// Just support items ?
 		if ((data.from !== 'Inventory' && data.type === 'item') || (data.from !== 'ShortCut' && data.type == 'skill')) {
 			return false;
 		}
 
 		// Can't drop an item on map if Equipment window is open
-		if (Equipment.getUI().ui.is(':visible') &&  data.type === 'item') {
-			ChatBox.addText(
-				DB.getMessage(189),
-				ChatBox.TYPE.ERROR,
-				ChatBox.FILTER.ITEM
-			);
+		if (Equipment.getUI().ui.is(':visible') && data.type === 'item') {
+			ChatBox.addText(DB.getMessage(189), ChatBox.TYPE.ERROR, ChatBox.FILTER.ITEM);
 			return false;
 		}
 
@@ -327,47 +296,40 @@ define(function( require )
 			return false;
 		}
 
-		//check if inventory is close player can'it drop item.
-		if (!Inventory.ui.is(':visible') &&  data.type === 'item') {
-			ChatBox.addText(
-				DB.getMessage(690),
-				ChatBox.TYPE.ERROR
-			);
+		//check if inventory is close player can't drop item.
+		if (!Inventory.getUI().ui.is(':visible') && data.type === 'item') {
+			ChatBox.addText(DB.getMessage(690), ChatBox.TYPE.ERROR);
 			return false;
 		}
 
 		//Check mouse screen position, if mouse is out of the screen item should not be dropped
-		if(Mouse.screen.x > window.innerWidth || Mouse.screen.x < 0 || Mouse.screen.y > window.innerHeight || Mouse.screen.y < 0){
+		if (Mouse.screen.x > window.innerWidth || Mouse.screen.x < 0 || Mouse.screen.y > window.innerHeight || Mouse.screen.y < 0) {
 			return false;
 		}
 
 		item = data.data;
 
-		switch(data.type) {
+		switch (data.type) {
 			case 'item':
 				// Have to specify how much
 				if (item.count > 1) {
 					InputBox.append();
 					InputBox.setType('item', false, item.count, item.ITID);
-					InputBox.onSubmitRequest = function onSubmitRequest( count ) {
+					InputBox.onSubmitRequest = function onSubmitRequest(count) {
 						InputBox.remove();
-						MapControl.onRequestDropItem(
-							item.index,
-							parseInt(count, 10 )
-						);
+						MapControl.onRequestDropItem(item.index, parseInt(count, 10));
 					};
 				}
 
 				// Only one, don't have to specify
 				else {
-					MapControl.onRequestDropItem( item.index, 1 );
+					MapControl.onRequestDropItem(item.index, 1);
 				}
 				break;
 
 			case 'skill':
 				ShortCut.dropOnGround(data.index, data.row);
 				break;
-
 		}
 
 		return false;
@@ -376,8 +338,8 @@ define(function( require )
 	/**
 	 * Auto follow logic
 	 */
-	function onAutoFollow(){
-		if(Session.autoFollow){
+	function onAutoFollow() {
+		if (Session.autoFollow) {
 			var player = Session.Entity;
 			var target = Session.autoFollowTarget;
 
@@ -385,26 +347,25 @@ define(function( require )
 			var dy = Math.abs(player.position[1] - target.position[1]);
 
 			// Use square based range check instead of Pythagorean because of diagonals
-			if( dx>1 || dy>1 ){
-				var dest = [0,0];
+			if (dx > 1 || dy > 1) {
+				var dest = [0, 0];
 
 				// If there is valid cell send move packet
 				if (checkFreeCell(Math.round(target.position[0]), Math.round(target.position[1]), 1, dest)) {
 					var pkt;
-					if(PACKETVER.value >= 20180307) {
-						pkt         = new PACKET.CZ.REQUEST_MOVE2();
+					if (PACKETVER.value >= 20180307) {
+						pkt = new PACKET.CZ.REQUEST_MOVE2();
 					} else {
-						pkt         = new PACKET.CZ.REQUEST_MOVE();
+						pkt = new PACKET.CZ.REQUEST_MOVE();
 					}
 					pkt.dest = dest;
 					Network.sendPacket(pkt);
 				}
 			}
 
-			Events.setTimeout( onAutoFollow, 500);
+			Events.setTimeout(onAutoFollow, 500);
 		}
 	}
-
 
 	/**
 	 * Search free cells around a position
@@ -414,8 +375,7 @@ define(function( require )
 	 * @param {number} range
 	 * @param {array} out
 	 */
-	function checkFreeCell(x, y, range, out)
-	{
+	function checkFreeCell(x, y, range, out) {
 		var _x, _y, r;
 		var d_x = Session.Entity.position[0] < x ? -1 : 1;
 		var d_y = Session.Entity.position[1] < y ? -1 : 1;
@@ -436,7 +396,6 @@ define(function( require )
 		return false;
 	}
 
-
 	/**
 	 * Does a cell is free (walkable, and no entity on)
 	 *
@@ -444,20 +403,21 @@ define(function( require )
 	 * @param {number} y
 	 * @param {returns} is free
 	 */
-	function isFreeCell(x, y)
-	{
+	function isFreeCell(x, y) {
 		if (!(Altitude.getCellType(x, y) & Altitude.TYPE.WALKABLE)) {
 			return false;
 		}
 
 		var free = true;
 
-		EntityManager.forEach(function(entity){
-			if (entity.objecttype != entity.constructor.TYPE_EFFECT &&
+		EntityManager.forEach(function (entity) {
+			if (
+				entity.objecttype != entity.constructor.TYPE_EFFECT &&
 				entity.objecttype != entity.constructor.TYPE_UNIT &&
 				entity.objecttype != entity.constructor.TYPE_TRAP &&
 				Math.round(entity.position[0]) === x &&
-				Math.round(entity.position[1]) === y) {
+				Math.round(entity.position[1]) === y
+			) {
 				free = false;
 				return false;
 			}
@@ -467,7 +427,6 @@ define(function( require )
 
 		return free;
 	}
-
 
 	/**
 	 *  Exports

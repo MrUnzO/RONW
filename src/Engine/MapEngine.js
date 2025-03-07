@@ -9,92 +9,88 @@
  * @author Vincent Thibault
  */
 
-define(function( require )
-{
+define(function (require) {
 	'use strict';
-
 
 	/**
 	 * Load dependencies
 	 */
-	var jQuery           = require('Utils/jquery');
-	var DB               = require('DB/DBManager');
-	var Configs          = require('Core/Configs');
-	var SoundManager     = require('Audio/SoundManager');
-	var BGM              = require('Audio/BGM');
-	var Events           = require('Core/Events');
-	var Session          = require('Engine/SessionStorage');
-	var Network          = require('Network/NetworkManager');
-	var PACKETVER        = require('Network/PacketVerManager');
-	var PACKET           = require('Network/PacketStructure');
-	var Renderer         = require('Renderer/Renderer');
-	var Camera           = require('Renderer/Camera');
-	var MapRenderer      = require('Renderer/MapRenderer');
-	var EntityManager    = require('Renderer/EntityManager');
-	var Entity           = require('Renderer/Entity/Entity');
-	var Altitude         = require('Renderer/Map/Altitude');
-	var MapControl       = require('Controls/MapControl');
-	var Mouse            = require('Controls/MouseEventHandler');
-	var KEYS             = require('Controls/KeyEventHandler');
-	var UIManager        = require('UI/UIManager');
-	var EffectManager    = require('Renderer/EffectManager');
-	var Background       = require('UI/Background');
-	var Escape           = require('UI/Components/Escape/Escape');
-	var ChatBox          = require('UI/Components/ChatBox/ChatBox');
-	var ChatBoxSettings  = require('UI/Components/ChatBoxSettings/ChatBoxSettings');
-	var StatusConst      = require('DB/Status/StatusState');
-    var CheckAttendance  = require('UI/Components/CheckAttendance/CheckAttendance');
-	var WinStats         = require('UI/Components/WinStats/WinStats');
-	var Inventory        = require('UI/Components/Inventory/Inventory');
-	var CartItems        = require('UI/Components/CartItems/CartItems');
-	var Vending          = require('UI/Components/Vending/Vending');
-	var ChangeCart       = require('UI/Components/ChangeCart/ChangeCart');
-	var ShortCut         = require('UI/Components/ShortCut/ShortCut');
-	var Equipment        = require('UI/Components/Equipment/Equipment');
-	var SwitchEquip      = require('UI/Components/SwitchEquip/SwitchEquip');
-	var ShortCuts        = require('UI/Components/ShortCuts/ShortCuts');
-	var StatusIcons      = require('UI/Components/StatusIcons/StatusIcons');
-	var ChatRoomCreate   = require('UI/Components/ChatRoomCreate/ChatRoomCreate');
-	var Emoticons        = require('UI/Components/Emoticons/Emoticons');
-	var FPS              = require('UI/Components/FPS/FPS');
-	var PartyFriends     = require('UI/Components/PartyFriends/PartyFriends');
-	var Guild            = require('UI/Components/Guild/Guild');
-	var WorldMap         = require('UI/Components/WorldMap/WorldMap');
-	var SkillListMH      = require('UI/Components/SkillListMH/SkillListMH');
-	var MobileUI         = require('UI/Components/MobileUI/MobileUI');
-	var CashShop         = require('UI/Components/CashShop/CashShop');
-	var Bank             = require('UI/Components/Bank/Bank');
-	var ItemReform		 = require('UI/Components/ItemReform/ItemReform');
-	var LaphineSys		 = require('UI/Components/LaphineSys/LaphineSys');
-	var LaphineUpg		 = require('UI/Components/LaphineUpg/LaphineUpg');
-	var Rodex            = require('UI/Components/Rodex/Rodex');
-	var RodexIcon        = require('UI/Components/Rodex/RodexIcon');
-	var Refine           = require('UI/Components/Refine/Refine');
-	var PetInformations  = require('UI/Components/PetInformations/PetInformations');
+	var jQuery = require('Utils/jquery');
+	var DB = require('DB/DBManager');
+	var Configs = require('Core/Configs');
+	var SoundManager = require('Audio/SoundManager');
+	var BGM = require('Audio/BGM');
+	var Events = require('Core/Events');
+	var Session = require('Engine/SessionStorage');
+	var Network = require('Network/NetworkManager');
+	var PACKETVER = require('Network/PacketVerManager');
+	var PACKET = require('Network/PacketStructure');
+	var Renderer = require('Renderer/Renderer');
+	var Camera = require('Renderer/Camera');
+	var MapRenderer = require('Renderer/MapRenderer');
+	var EntityManager = require('Renderer/EntityManager');
+	var Entity = require('Renderer/Entity/Entity');
+	var Altitude = require('Renderer/Map/Altitude');
+	var MapControl = require('Controls/MapControl');
+	var Mouse = require('Controls/MouseEventHandler');
+	var KEYS = require('Controls/KeyEventHandler');
+	var UIManager = require('UI/UIManager');
+	var EffectManager = require('Renderer/EffectManager');
+	var Background = require('UI/Background');
+	var Escape = require('UI/Components/Escape/Escape');
+	var ChatBox = require('UI/Components/ChatBox/ChatBox');
+	var ChatBoxSettings = require('UI/Components/ChatBoxSettings/ChatBoxSettings');
+	var StatusConst = require('DB/Status/StatusState');
+	var CheckAttendance = require('UI/Components/CheckAttendance/CheckAttendance');
+	var WinStats = require('UI/Components/WinStats/WinStats');
+	var Inventory = require('UI/Components/Inventory/Inventory');
+	var CartItems = require('UI/Components/CartItems/CartItems');
+	var Vending = require('UI/Components/Vending/Vending');
+	var ChangeCart = require('UI/Components/ChangeCart/ChangeCart');
+	var ShortCut = require('UI/Components/ShortCut/ShortCut');
+	var Equipment = require('UI/Components/Equipment/Equipment');
+	var SwitchEquip = require('UI/Components/SwitchEquip/SwitchEquip');
+	var ShortCuts = require('UI/Components/ShortCuts/ShortCuts');
+	var StatusIcons = require('UI/Components/StatusIcons/StatusIcons');
+	var ChatRoomCreate = require('UI/Components/ChatRoomCreate/ChatRoomCreate');
+	var Emoticons = require('UI/Components/Emoticons/Emoticons');
+	var FPS = require('UI/Components/FPS/FPS');
+	var PartyFriends = require('UI/Components/PartyFriends/PartyFriends');
+	var Guild = require('UI/Components/Guild/Guild');
+	var WorldMap = require('UI/Components/WorldMap/WorldMap');
+	var SkillListMH = require('UI/Components/SkillListMH/SkillListMH');
+	var MobileUI = require('UI/Components/MobileUI/MobileUI');
+	var CashShop = require('UI/Components/CashShop/CashShop');
+	var Bank = require('UI/Components/Bank/Bank');
+	var ItemReform = require('UI/Components/ItemReform/ItemReform');
+	var LaphineSys = require('UI/Components/LaphineSys/LaphineSys');
+	var LaphineUpg = require('UI/Components/LaphineUpg/LaphineUpg');
+	var Rodex = require('UI/Components/Rodex/Rodex');
+	var RodexIcon = require('UI/Components/Rodex/RodexIcon');
+	var Refine = require('UI/Components/Refine/Refine');
+	var PetInformations = require('UI/Components/PetInformations/PetInformations');
 	var HomunInformations = require('UI/Components/HomunInformations/HomunInformations');
-	var MapName          = require('UI/Components/MapName/MapName');
-	var Announce         = require('UI/Components/Announce/Announce');
-	var PluginManager    = require('Plugins/PluginManager');
+	var MapName = require('UI/Components/MapName/MapName');
+	var Announce = require('UI/Components/Announce/Announce');
+	var PluginManager = require('Plugins/PluginManager');
 
-	var UIVersionManager      = require('UI/UIVersionManager');
+	var UIVersionManager = require('UI/UIVersionManager');
 	// Version Dependent UIs
 	var BasicInfo = require('UI/Components/BasicInfo/BasicInfo');
-	var MiniMap   = require('UI/Components/MiniMap/MiniMap');
+	var MiniMap = require('UI/Components/MiniMap/MiniMap');
 	var SkillList = require('UI/Components/SkillList/SkillList');
-	var Quest     = require('UI/Components/Quest/Quest');
-	var PlayerViewEquip     = require('UI/Components/PlayerViewEquip/PlayerViewEquip');
+	var Quest = require('UI/Components/Quest/Quest');
+	var PlayerViewEquip = require('UI/Components/PlayerViewEquip/PlayerViewEquip');
 
 	/**
 	 * @var {string mapname}
 	 */
 	var _mapName = '';
 
-
 	/**
 	 * @var {boolean} is initialized
 	 */
 	var _isInitialised = false;
-
 
 	/**
 	 * @namespace MapEngine
@@ -104,12 +100,10 @@ define(function( require )
 	var snCounter = 0;
 	var chatLines = 0;
 
-
 	/**
 	 * @var {boolean} do we need to update UI versions?
 	 */
 	MapEngine.needsUIVerUpdate = false;
-
 
 	/**
 	 * Connect to Map Server
@@ -118,79 +112,88 @@ define(function( require )
 	 * @param {number} port
 	 * @param {string} mapName
 	 */
-	MapEngine.init = function init( ip, port, mapName )
-	{
+	MapEngine.init = function init(ip, port, mapName) {
 		_mapName = mapName;
 
 		// Connect to char server
 		var forceAddress = Configs.get('forceUseAddress');
 		var server_info = Configs.getServer();
-		var current_ip = forceAddress ? server_info.address : Network.utils.longToIP( ip );
-		Network.connect( current_ip, port, function onconnect( success ) {
+		var current_ip = forceAddress ? server_info.address : Network.utils.longToIP(ip);
+		Network.connect(
+			current_ip,
+			port,
+			function onconnect(success) {
+				console.log('[MapEngine] Renderer.canvas', Renderer.canvas);
+				jQuery(Renderer.canvas).css('z-index', 1);
 
-			// Force reloading map
-			MapRenderer.currentMap = '';
+				// Force reloading map
+				MapRenderer.currentMap = '';
 
-			// Fail to connect...
-			if (!success) {
-				UIManager.showErrorBox( DB.getMessage(1) );
-				return;
-			}
-
-			// Success, try to login.
-			var pkt;
-			if(PACKETVER.value >= 20180307) {
-				pkt        = new PACKET.CZ.ENTER2();
-			} else {
-				pkt        = new PACKET.CZ.ENTER();
-			}
-			pkt.AID        = Session.AID;
-			pkt.GID        = Session.GID;
-			pkt.AuthCode   = Session.AuthCode;
-			pkt.clientTime = Date.now();
-			pkt.Sex        = Session.Sex;
-			Network.sendPacket(pkt);
-
-			// Server send back AID
-			Network.read(function(fp){
-				// if PACKETVER < 20070521, client send GID...
-				if (fp.length === 4) {
-					Session.Character.GID = fp.readLong();
+				// Fail to connect...
+				if (!success) {
+					UIManager.showErrorBox(DB.getMessage(1));
+					return;
 				}
-			});
 
-			var hbt = new PACKET.CZ.HBT();
-			var is_sec_hbt = Configs.get('sec_HBT', null);
+				// Success, try to login.
+				var pkt;
+				if (PACKETVER.value >= 20180307) {
+					pkt = new PACKET.CZ.ENTER2();
+				} else {
+					pkt = new PACKET.CZ.ENTER();
+				}
+				pkt.AID = Session.AID;
+				pkt.GID = Session.GID;
+				pkt.AuthCode = Session.AuthCode;
+				pkt.clientTime = Date.now();
+				pkt.Sex = Session.Sex;
+				Network.sendPacket(pkt);
 
-			// Ping
-			var ping, SP;
-			SP = Session.ping;
+				// Server send back AID
+				Network.read(function (fp) {
+					// if PACKETVER < 20070521, client send GID...
+					if (fp.length === 4) {
+						Session.Character.GID = fp.readLong();
+					}
+				});
 
-			if(PACKETVER.value >= 20180307) {
-				ping = new PACKET.CZ.REQUEST_TIME2();
-			} else {
-				ping = new PACKET.CZ.REQUEST_TIME();
-			}
-			var startTick = Date.now();
-			Network.setPing(function(){
-				if(is_sec_hbt) { Network.sendPacket(hbt); }
+				var hbt = new PACKET.CZ.HBT();
+				var is_sec_hbt = Configs.get('sec_HBT', null);
 
-				ping.clientTime = Date.now() - startTick;
+				// Ping
+				var ping, SP;
+				SP = Session.ping;
 
-				if(!SP.returned && SP.pingTime)	{ console.warn('[Network] The server did not answer the previous PING!'); }
-				SP.pingTime = ping.clientTime;
-				SP.returned = false;
+				if (PACKETVER.value >= 20180307) {
+					ping = new PACKET.CZ.REQUEST_TIME2();
+				} else {
+					ping = new PACKET.CZ.REQUEST_TIME();
+				}
+				var startTick = Date.now();
+				Network.setPing(function () {
+					if (is_sec_hbt) {
+						Network.sendPacket(hbt);
+					}
 
-				Network.sendPacket(ping);
-			});
+					ping.clientTime = Date.now() - startTick;
 
-			Session.Playing = true;
-		}, true);
+					if (!SP.returned && SP.pingTime) {
+						console.warn('[Network] The server did not answer the previous PING!');
+					}
+					SP.pingTime = ping.clientTime;
+					SP.returned = false;
 
+					Network.sendPacket(ping);
+				});
+
+				Session.Playing = true;
+			},
+			true,
+		);
 
 		// Select UI version when needed
-		if(MapEngine.needsUIVerUpdate || !_isInitialised){
-			if(PACKETVER.value < 20200520) {
+		if (MapEngine.needsUIVerUpdate || !_isInitialised) {
+			if (PACKETVER.value < 20200520) {
 				BasicInfo.selectUIVersion();
 			}
 			MiniMap.selectUIVersion();
@@ -202,60 +205,33 @@ define(function( require )
 			Inventory.selectUIVersion();
 		}
 
-		// Init selected UIs when needed
-		if(MapEngine.needsUIVerUpdate || !_isInitialised){
-			console.log('init selected UIs when needed');
-			// Prepare UIs
-			MiniMap.getUI().prepare();
-			SkillList.getUI().prepare();
-			if(PACKETVER.value < 20200520) {
-				console.log('prepare BasicInfo');
-				BasicInfo.getUI().prepare();
-			}
-			Equipment.getUI().prepare();
-			Quest.getUI().prepare();
-			WinStats.getUI().prepare();
-
-			// Bind UIs
-			WinStats.getUI().onRequestUpdate        = onRequestStatUpdate;
-			Equipment.getUI().onUnEquip             = onUnEquip;
-			Equipment.getUI().onConfigUpdate        = onConfigUpdate;
-			Equipment.getUI().onEquipItem           = onEquipItem;
-			Equipment.getUI().onRemoveOption        = onRemoveOption;
-			Inventory.getUI().onUseItem             = onUseItem;
-			Inventory.getUI().onEquipItem           = onEquipItem;
-
-			// Avoid zone server change init
-			MapEngine.needsUIVerUpdate = false;
-		}
-
 		// Do not hook multiple time
 		if (!_isInitialised) {
 			_isInitialised = true;
 
 			MapControl.init();
-			MapControl.onRequestWalk     = onRequestWalk;
+			MapControl.onRequestWalk = onRequestWalk;
 			MapControl.onRequestStopWalk = onRequestStopWalk;
 			MapControl.onRequestDropItem = onDropItem;
 
 			// Hook packets
-			Network.hookPacket( PACKET.ZC.AID,                 onReceiveAccountID );
-			Network.hookPacket( PACKET.ZC.ACCEPT_ENTER,        onConnectionAccepted );
-			Network.hookPacket( PACKET.ZC.ACCEPT_ENTER2,       onConnectionAccepted );
-			Network.hookPacket( PACKET.ZC.ACCEPT_ENTER3,       onConnectionAccepted );
-			Network.hookPacket( PACKET.ZC.NPCACK_MAPMOVE,      onMapChange );
-			Network.hookPacket( PACKET.ZC.NPCACK_SERVERMOVE,   onServerChange );
-			Network.hookPacket( PACKET.ZC.ACCEPT_QUIT,         onExitSuccess );
-			Network.hookPacket( PACKET.ZC.REFUSE_QUIT,         onExitFail );
-			Network.hookPacket( PACKET.ZC.RESTART_ACK,         onRestartAnswer );
-			Network.hookPacket( PACKET.ZC.ACK_REQ_DISCONNECT,  onDisconnectAnswer );
-			Network.hookPacket( PACKET.ZC.NOTIFY_TIME,         onPong );
-			Network.hookPacket( PACKET.ZC.PING_LIVE,           onPingLive );
-			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY,       onConfigNotify );
-			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY2,      onConfigNotify );
-			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY3,      onConfigNotify );
-			Network.hookPacket( PACKET.ZC.CONFIG_NOTIFY4,      onConfigNotify );
-			Network.hookPacket( PACKET.ZC.CONFIG,              onConfig );
+			Network.hookPacket(PACKET.ZC.AID, onReceiveAccountID);
+			Network.hookPacket(PACKET.ZC.ACCEPT_ENTER, onConnectionAccepted);
+			Network.hookPacket(PACKET.ZC.ACCEPT_ENTER2, onConnectionAccepted);
+			Network.hookPacket(PACKET.ZC.ACCEPT_ENTER3, onConnectionAccepted);
+			Network.hookPacket(PACKET.ZC.NPCACK_MAPMOVE, onMapChange);
+			Network.hookPacket(PACKET.ZC.NPCACK_SERVERMOVE, onServerChange);
+			Network.hookPacket(PACKET.ZC.ACCEPT_QUIT, onExitSuccess);
+			Network.hookPacket(PACKET.ZC.REFUSE_QUIT, onExitFail);
+			Network.hookPacket(PACKET.ZC.RESTART_ACK, onRestartAnswer);
+			Network.hookPacket(PACKET.ZC.ACK_REQ_DISCONNECT, onDisconnectAnswer);
+			Network.hookPacket(PACKET.ZC.NOTIFY_TIME, onPong);
+			Network.hookPacket(PACKET.ZC.PING_LIVE, onPingLive);
+			Network.hookPacket(PACKET.ZC.CONFIG_NOTIFY, onConfigNotify);
+			Network.hookPacket(PACKET.ZC.CONFIG_NOTIFY2, onConfigNotify);
+			Network.hookPacket(PACKET.ZC.CONFIG_NOTIFY3, onConfigNotify);
+			Network.hookPacket(PACKET.ZC.CONFIG_NOTIFY4, onConfigNotify);
+			Network.hookPacket(PACKET.ZC.CONFIG, onConfig);
 
 			// Extend controller
 			require('./MapEngine/Main').call();
@@ -279,11 +255,11 @@ define(function( require )
 			require('./MapEngine/UIOpen').call();
 			require('./MapEngine/Quest').call();
 			require('./MapEngine/Rodex').call();
-			if(Configs.get('enableCashShop')){
+			if (Configs.get('enableCashShop')) {
 				require('./MapEngine/CashShop').call();
 			}
 
-			if(Configs.get('enableBank')) {
+			if (Configs.get('enableBank')) {
 				require('./MapEngine/Bank').init();
 			}
 
@@ -310,37 +286,37 @@ define(function( require )
 			Rodex.prepare();
 			RodexIcon.prepare();
 
-			if(Configs.get('enableMapName')){
+			if (Configs.get('enableMapName')) {
 				MapName.prepare();
 			}
 
-			if(Configs.get('enableCashShop')){
+			if (Configs.get('enableCashShop')) {
 				CashShop.prepare();
 			}
 
-			if(Configs.get('enableBank')) {
+			if (Configs.get('enableBank')) {
 				Bank.prepare();
 			}
 
-			if(PACKETVER.value >= 20160601) {
+			if (PACKETVER.value >= 20160601) {
 				LaphineSys.prepare();
 			}
 
-			if(PACKETVER.value >= 20170726) {
+			if (PACKETVER.value >= 20170726) {
 				LaphineUpg.prepare();
 			}
 
-			if(Configs.get('enableRefineUI') && PACKETVER.value >= 20161012) {
+			if (Configs.get('enableRefineUI') && PACKETVER.value >= 20161012) {
 				Refine.prepare();
 			}
 
 			if (PACKETVER.value >= 20170208) {
 				SwitchEquip.prepare();
-				SwitchEquip.onAddSwitchEquip	= onAddSwitchEquip;
-				SwitchEquip.onRemoveSwitchEquip	= onRemoveSwitchEquip;
+				SwitchEquip.onAddSwitchEquip = onAddSwitchEquip;
+				SwitchEquip.onRemoveSwitchEquip = onRemoveSwitchEquip;
 			}
 
-			if(Configs.get('enableCheckAttendance') && PACKETVER.value >= 20180307) {
+			if (Configs.get('enableCheckAttendance') && PACKETVER.value >= 20180307) {
 				CheckAttendance.prepare();
 			}
 
@@ -349,41 +325,58 @@ define(function( require )
 			}
 
 			// Bind UI
-			PetInformations.onConfigUpdate          = onConfigUpdate;
-			HomunInformations.onConfigUpdate        = onConfigUpdate;
-			Escape.onExitRequest            = onExitRequest;
-			Escape.onCharSelectionRequest   = onRestartRequest;
+			PetInformations.onConfigUpdate = onConfigUpdate;
+			HomunInformations.onConfigUpdate = onConfigUpdate;
+			Escape.onExitRequest = onExitRequest;
+			Escape.onCharSelectionRequest = onRestartRequest;
 			Escape.onReturnSavePointRequest = onReturnSavePointRequest;
-			Escape.onResurectionRequest     = onResurectionRequest;
-			ChatBox.onRequestTalk           = onRequestTalk;
-
+			Escape.onResurectionRequest = onResurectionRequest;
+			ChatBox.onRequestTalk = onRequestTalk;
 		}
+		// Init selected UIs when needed
+		if (MapEngine.needsUIVerUpdate || !_isInitialised) {
+			// Prepare UIs
+			MiniMap.getUI().prepare();
+			SkillList.getUI().prepare();
+			if (PACKETVER.value < 20200520) {
+				BasicInfo.getUI().prepare();
+			}
+			Equipment.getUI().prepare();
+			Quest.getUI().prepare();
+			WinStats.getUI().prepare();
 
+			// Bind UIs
+			WinStats.getUI().onRequestUpdate = onRequestStatUpdate;
+			Equipment.getUI().onUnEquip = onUnEquip;
+			Equipment.getUI().onConfigUpdate = onConfigUpdate;
+			Equipment.getUI().onEquipItem = onEquipItem;
+			Equipment.getUI().onRemoveOption = onRemoveOption;
+			Inventory.getUI().onUseItem = onUseItem;
+			Inventory.getUI().onEquipItem = onEquipItem;
 
+			// Avoid zone server change init
+			MapEngine.needsUIVerUpdate = false;
+		}
 	};
-
 
 	/**
 	 * Pong from server
 	 * TODO: check the time ?
 	 */
-	function onPong( pkt )
-	{
+	function onPong(pkt) {
 		var SP = Session.ping;
 
 		SP.returned = true;
 		SP.pongTime = 0;
 		SP.value = SP.pongTime - SP.pingTime;
 
-		Session.serverTick = pkt.time + (SP.value/2); // Adjust with half ping
+		Session.serverTick = pkt.time + SP.value / 2; // Adjust with half ping
 	}
-
 
 	/**
 	 * Ping from server?
 	 */
-	function onPingLive( pkt )
-	{
+	function onPingLive(pkt) {
 		var pong_pkt = new PACKET.CZ.PING_LIVE();
 		Network.sendPacket(pong_pkt);
 	}
@@ -393,40 +386,23 @@ define(function( require )
 	 *
 	 * @param {object} pkt - PACKET_ZC_CONFIG
 	 */
-	function onConfig( pkt )
-	{
-		switch(pkt.Config) {
+	function onConfig(pkt) {
+		switch (pkt.Config) {
 			case 0:
-				Equipment.getUI().setEquipConfig( pkt.Value );
-				ChatBox.addText(
-					DB.getMessage(1358 + (pkt.Value ? 1 : 0) ),
-					ChatBox.TYPE.INFO,
-					ChatBox.FILTER.PUBLIC_LOG
-				);
+				Equipment.getUI().setEquipConfig(pkt.Value);
+				ChatBox.addText(DB.getMessage(1358 + (pkt.Value ? 1 : 0)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 				break;
 			case 1:
 				Session.Entity.call_flag = pkt.Value;
-				ChatBox.addText(
-					DB.getMessage(2978 + (pkt.Value ? 0 : 1) ),
-					ChatBox.TYPE.INFO,
-					ChatBox.FILTER.PUBLIC_LOG
-				);
+				ChatBox.addText(DB.getMessage(2978 + (pkt.Value ? 0 : 1)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 				break;
 			case 2:
-				PetInformations.setFeedConfig( pkt.Value );
-				ChatBox.addText(
-					DB.getMessage(2579 + (pkt.Value ? 0 : 1) ),
-					ChatBox.TYPE.INFO,
-					ChatBox.FILTER.PUBLIC_LOG
-				);
+				PetInformations.setFeedConfig(pkt.Value);
+				ChatBox.addText(DB.getMessage(2579 + (pkt.Value ? 0 : 1)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 				break;
 			case 3:
-				HomunInformations.setFeedConfig( pkt.Value );
-				ChatBox.addText(
-					DB.getMessage(3282 + (pkt.Value ? 0 : 1) ),
-					ChatBox.TYPE.INFO,
-					ChatBox.FILTER.PUBLIC_LOG
-				);
+				HomunInformations.setFeedConfig(pkt.Value);
+				ChatBox.addText(DB.getMessage(3282 + (pkt.Value ? 0 : 1)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 				break;
 			default:
 				console.log('[PACKET_ZC_CONFIG] Unknown Config Type %d (value:%d)', pkt.Config, pkt.Value);
@@ -438,62 +414,41 @@ define(function( require )
 	 *
 	 * @param {object} pkt - PACKET_ZC_CONFIG_NOTIFY
 	 */
-	function onConfigNotify( pkt )
-	{
+	function onConfigNotify(pkt) {
 		if (typeof pkt.show_eq_flag !== 'undefined') {
-			Equipment.getUI().setEquipConfig( pkt.show_eq_flag );
-			ChatBox.addText(
-				DB.getMessage(1358 + (pkt.show_eq_flag ? 1 : 0) ),
-				ChatBox.TYPE.INFO,
-				ChatBox.FILTER.PUBLIC_LOG
-			);
+			Equipment.getUI().setEquipConfig(pkt.show_eq_flag);
+			ChatBox.addText(DB.getMessage(1358 + (pkt.show_eq_flag ? 1 : 0)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 		}
 		if (typeof pkt.pet_autofeeding_flag !== 'undefined') {
-			PetInformations.setFeedConfig( pkt.pet_autofeeding_flag );
-			ChatBox.addText(
-				DB.getMessage(2579 + (pkt.pet_autofeeding_flag ? 0 : 1) ),
-				ChatBox.TYPE.INFO,
-				ChatBox.FILTER.PUBLIC_LOG
-			);
+			PetInformations.setFeedConfig(pkt.pet_autofeeding_flag);
+			ChatBox.addText(DB.getMessage(2579 + (pkt.pet_autofeeding_flag ? 0 : 1)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 		}
 		if (typeof pkt.call_flag !== 'undefined') {
 			Session.Entity.call_flag = pkt.call_flag;
-			ChatBox.addText(
-				DB.getMessage(2978 + (pkt.call_flag ? 0 : 1) ),
-				ChatBox.TYPE.INFO,
-				ChatBox.FILTER.PUBLIC_LOG
-			);
+			ChatBox.addText(DB.getMessage(2978 + (pkt.call_flag ? 0 : 1)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 		}
 		if (typeof pkt.homunculus_autofeeding_flag !== 'undefined') {
-			HomunInformations.setFeedConfig( pkt.homunculus_autofeeding_flag );
-			ChatBox.addText(
-				DB.getMessage(3282 + (pkt.homunculus_autofeeding_flag ? 0 : 1) ),
-				ChatBox.TYPE.INFO,
-				ChatBox.FILTER.PUBLIC_LOG
-			);
+			HomunInformations.setFeedConfig(pkt.homunculus_autofeeding_flag);
+			ChatBox.addText(DB.getMessage(3282 + (pkt.homunculus_autofeeding_flag ? 0 : 1)), ChatBox.TYPE.INFO, ChatBox.FILTER.PUBLIC_LOG);
 		}
 	}
-
 
 	/**
 	 * Server update our account id
 	 *
 	 * @param {object} pkt - PACKET.ZC.AID
 	 */
-	function onReceiveAccountID( pkt )
-	{
+	function onReceiveAccountID(pkt) {
 		Session.Character.GID = pkt.AID;
 	}
-
 
 	/**
 	 * Map accept us to enter the map
 	 *
 	 * @param {object} pkt - PACKET.ZC.ACCEPT_ENTER
 	 */
-	function onConnectionAccepted( pkt )
-	{
-		Session.Entity = new Entity( Session.Character );
+	function onConnectionAccepted(pkt) {
+		Session.Entity = new Entity(Session.Character);
 		Session.Entity.onWalkEnd = onWalkEnd;
 
 		if ('sex' in pkt && pkt.sex < 2) {
@@ -501,70 +456,67 @@ define(function( require )
 		}
 
 		// Reset
-		Session.petId         =     0;
-		Session.hasParty      = false;
+		Session.petId = 0;
+		Session.hasParty = false;
 		Session.isPartyLeader = false;
-		Session.hasGuild      = false;
-		Session.guildRight    =     0;
+		Session.hasGuild = false;
+		Session.guildRight = 0;
 
-		Session.homunId       =     0;
+		Session.homunId = 0;
 
 		Session.Entity.clevel = Session.Character.level;
 
-		Session.mapState =  {
-			property        : 0,
-			type            : 0,
-			flag            : 0,
-			isPVPZone       : false,
-			isAgitZone      : false,
-			isPVP           : false,
-			isGVG           : false,
-			isSiege         : false,
-			isNoLockOn      : false,
-			showPVPCounter  : false,
-			showBFCounter   : false,
-			isBattleField   : false,
+		Session.mapState = {
+			property: 0,
+			type: 0,
+			flag: 0,
+			isPVPZone: false,
+			isAgitZone: false,
+			isPVP: false,
+			isGVG: false,
+			isSiege: false,
+			isNoLockOn: false,
+			showPVPCounter: false,
+			showBFCounter: false,
+			isBattleField: false,
 		};
 
-		if(PACKETVER.value >= 20200520) {
+		if (PACKETVER.value >= 20200520) {
 			BasicInfo.selectUIVersionWithJob(DB.getJobClass(Session.Character.job));
 			BasicInfo.getUI().prepare();
 		}
 
-		BasicInfo.getUI().update('blvl', Session.Character.level );
-		BasicInfo.getUI().update('jlvl', Session.Character.joblevel );
-		BasicInfo.getUI().update('zeny', Session.Character.money );
-		BasicInfo.getUI().update('name', Session.Character.name );
-		BasicInfo.getUI().update('job',  Session.Character.job );
+		BasicInfo.getUI().update('blvl', Session.Character.level);
+		BasicInfo.getUI().update('jlvl', Session.Character.joblevel);
+		BasicInfo.getUI().update('zeny', Session.Character.money);
+		BasicInfo.getUI().update('name', Session.Character.name);
+		BasicInfo.getUI().update('job', Session.Character.job);
 
 		// Fix http://forum.robrowser.com/?topic=32177.0
 		onMapChange({
-			xPos:    pkt.PosDir[0],
-			yPos:    pkt.PosDir[1],
-			mapName: _mapName
+			xPos: pkt.PosDir[0],
+			yPos: pkt.PosDir[1],
+			mapName: _mapName,
 		});
 	}
-
 
 	/**
 	 * Changing map, loading new map
 	 *
 	 * @param {object} pkt - PACKET.ZC.NPCACK_MAPMOVE
 	 */
-	function onMapChange( pkt )
-	{
+	function onMapChange(pkt) {
 		jQuery(window).off('keydown.map');
 
-		MapRenderer.onLoad = function(){
-
+		MapRenderer.onLoad = function () {
 			// TODO: find a better place to put it
-			jQuery(window).on('keydown.map', function( event ){
+			jQuery(window).on('keydown.map', function (event) {
 				if (event.which === KEYS.INSERT) {
 					var pkt;
-					if(PACKETVER.value >= 20180307) {
-						pkt        = new PACKET.CZ.REQUEST_ACT2();
+					if (PACKETVER.value >= 20180307) {
+						pkt = new PACKET.CZ.REQUEST_ACT2();
 					} else {
-						pkt        = new PACKET.CZ.REQUEST_ACT();
+						pkt = new PACKET.CZ.REQUEST_ACT();
 					}
 					pkt.action = Session.Entity.action === Session.Entity.ACTION.SIT ? 3 : 2;
 					Network.sendPacket(pkt);
@@ -574,13 +526,12 @@ define(function( require )
 			});
 
 			Session.Entity.set({
-				PosDir: [ pkt.xPos, pkt.yPos, 0 ],
-				GID: Session.Character.GID
+				PosDir: [pkt.xPos, pkt.yPos, 0],
+				GID: Session.Character.GID,
 			});
-			EntityManager.add( Session.Entity );
-			if(Session.Entity.effectState & StatusConst.EffectState.FALCON) {
-				if(!Session.Entity.falcon)
-					Session.Entity.falcon = new Entity();
+			EntityManager.add(Session.Entity);
+			if (Session.Entity.effectState & StatusConst.EffectState.FALCON) {
+				if (!Session.Entity.falcon) Session.Entity.falcon = new Entity();
 
 				Session.Entity.falcon.set({
 					objecttype: Session.Entity.falcon.constructor.TYPE_FALCON,
@@ -588,15 +539,14 @@ define(function( require )
 					PosDir: [Session.Entity.position[0], Session.Entity.position[1], 0],
 					job: Session.Entity.job + '_FALCON',
 					speed: 200,
-					name: "",
+					name: '',
 					hp: -1,
 					maxhp: -1,
 					hideShadow: true,
 				});
 				EntityManager.add(Session.Entity.falcon);
-			} else if(Session.Entity.effectState & StatusConst.EffectState.WUG) {
-				if(!Session.Entity.wug)
-					Session.Entity.wug = new Entity();
+			} else if (Session.Entity.effectState & StatusConst.EffectState.WUG) {
+				if (!Session.Entity.wug) Session.Entity.wug = new Entity();
 
 				Session.Entity.wug.set({
 					objecttype: Session.Entity.wug.constructor.TYPE_WUG,
@@ -604,7 +554,7 @@ define(function( require )
 					PosDir: [Session.Entity.position[0], Session.Entity.position[1], 0],
 					job: 'WUG',
 					speed: Session.Entity.walk.speed,
-					name: "",
+					name: '',
 					hp: -1,
 					maxhp: -1,
 				});
@@ -615,14 +565,14 @@ define(function( require )
 			Session.Entity.aura.load(EffectManager);
 
 			// Initialize camera
-			Camera.setTarget( Session.Entity );
+			Camera.setTarget(Session.Entity);
 			Camera.init();
 
 			// Add Game UI
 			MiniMap.getUI().append();
-			MiniMap.getUI().setMap( MapRenderer.currentMap );
-			if(Configs.get('enableMapName')){
-				MapName.setMap( MapRenderer.currentMap );
+			MiniMap.getUI().setMap(MapRenderer.currentMap);
+			if (Configs.get('enableMapName')) {
+				MapName.setMap(MapRenderer.currentMap);
 				MapName.append();
 			}
 			ChatBox.append();
@@ -656,11 +606,11 @@ define(function( require )
 
 			Quest.getUI().append();
 
-			if(Configs.get('enableCashShop')){
+			if (Configs.get('enableCashShop')) {
 				CashShop.append();
 			}
 
-			if(Configs.get('enableCheckAttendance') && PACKETVER.value >= 20180307) {
+			if (Configs.get('enableCheckAttendance') && PACKETVER.value >= 20180307) {
 				CheckAttendance.append();
 			}
 
@@ -668,43 +618,37 @@ define(function( require )
 			PluginManager.init();
 
 			// Map loaded
-			Network.sendPacket(
-				new PACKET.CZ.NOTIFY_ACTORINIT()
-			);
+			Network.sendPacket(new PACKET.CZ.NOTIFY_ACTORINIT());
 
 			// Rates Info
 			if (Session.ratesInfo) {
 				Announce.append();
-        		Announce.set(Session.ratesInfo, '#FFFF00', true);
+				Announce.set(Session.ratesInfo, '#FFFF00', true);
 			}
 		};
 
-		MapRenderer.setMap( pkt.mapName );
+		MapRenderer.setMap(pkt.mapName);
 	}
-
 
 	/**
 	 * Change zone server
 	 *
 	 * @param {object} pkt - PACKET.ZC.NPCACK_SERVERMOVE
 	 */
-	function onServerChange( pkt )
-	{
+	function onServerChange(pkt) {
 		jQuery(window).off('keydown.map');
-		MapEngine.init( pkt.addr.ip, pkt.addr.port, pkt.mapName );
+		MapEngine.init(pkt.addr.ip, pkt.addr.port, pkt.mapName);
 	}
-
 
 	/**
 	 * Ask the server to disconnect
 	 */
-	function onExitRequest()
-	{
+	function onExitRequest() {
 		var pkt = new PACKET.CZ.REQUEST_QUIT();
 		Network.sendPacket(pkt);
 
 		// Wait a second, if no answer from the server, then close it.
-		Events.setTimeout(function(){
+		Events.setTimeout(function () {
 			UIManager.removeComponents();
 			Network.close();
 			Renderer.stop();
@@ -712,31 +656,27 @@ define(function( require )
 			SoundManager.stop();
 			BGM.stop();
 			Background.remove();
-			Background.setImage('bgi_temp.bmp', function(){
+			Background.setImage('bgi_temp.bmp', function () {
 				require('Engine/GameEngine').reload();
 			});
 		}, 1000);
 	}
-
 
 	/**
 	 * Server don't want us to disconnect yet
 	 *
 	 * @param {object} pkt - PACKET.ZC.REFUSE_QUIT
 	 */
-	function onExitFail( pkt )
-	{
-		ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
+	function onExitFail(pkt) {
+		ChatBox.addText(DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
 	}
-
 
 	/**
 	 * Server accept to disconnect us
 	 *
 	 * @param {object} pkt - PACKET.ZC.REFUSE_QUIT
 	 */
-	function onExitSuccess()
-	{
+	function onExitSuccess() {
 		UIManager.removeComponents();
 		Network.close();
 		Renderer.stop();
@@ -744,56 +684,47 @@ define(function( require )
 		SoundManager.stop();
 		BGM.stop();
 		Background.remove();
-		Background.setImage('bgi_temp.bmp', function(){
+		Background.setImage('bgi_temp.bmp', function () {
 			require('Engine/GameEngine').reload();
 		});
 	}
 
-
 	/**
 	 * Try to return to char-server
 	 */
-	function onRestartRequest()
-	{
+	function onRestartRequest() {
 		var pkt = new PACKET.CZ.RESTART();
 		pkt.type = 1;
 		Network.sendPacket(pkt);
 	}
 
-
 	/**
 	 * Go back to save point request
 	 */
-	function onReturnSavePointRequest()
-	{
+	function onReturnSavePointRequest() {
 		var pkt = new PACKET.CZ.RESTART();
 		pkt.type = 0;
 		Network.sendPacket(pkt);
 	}
 
-
 	/**
 	 * Resurection feature
 	 */
-	function onResurectionRequest()
-	{
+	function onResurectionRequest() {
 		var pkt = new PACKET.CZ.STANDING_RESURRECTION();
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * Does the server want you to return to char-server ?
 	 *
 	 * @param {object} pkt - PACKET.ZC.RESTART_ACK
 	 */
-	function onRestartAnswer( pkt )
-	{
+	function onRestartAnswer(pkt) {
 		if (!pkt.type) {
 			// Have to wait 10sec
-			ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
-		}
-		else {
+			ChatBox.addText(DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
+		} else {
 			BasicInfo.getUI().remove();
 			PlayerViewEquip.getUI().remove();
 			StatusIcons.clean();
@@ -807,13 +738,11 @@ define(function( require )
 		}
 	}
 
-
 	/**
 	 * Response from server to disconnect
 	 * @param pkt - {object}
 	 */
-	function onDisconnectAnswer( pkt )
-	{
+	function onDisconnectAnswer(pkt) {
 		switch (pkt.result) {
 			// Disconnect
 			case 0:
@@ -830,13 +759,12 @@ define(function( require )
 
 			case 1:
 				// Have to wait 10 sec
-				ChatBox.addText( DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG );
+				ChatBox.addText(DB.getMessage(502), ChatBox.TYPE.ERROR, ChatBox.FILTER.PUBLIC_LOG);
 				break;
 
 			default:
 		}
 	}
-
 
 	/**
 	 * ChatBox talk
@@ -845,8 +773,7 @@ define(function( require )
 	 * @param {string} text
 	 * @param {number} target
 	 */
-	function onRequestTalk( user, text, target )
-	{
+	function onRequestTalk(user, text, target) {
 		var pkt;
 		var flag_party = text[0] === '%' || KEYS.CTRL;
 		var flag_guild = text[0] === '$' || (KEYS.ALT && !(KEYS[0] || KEYS[1] || KEYS[2] || KEYS[3] || KEYS[4] || KEYS[5] || KEYS[6] || KEYS[7] || KEYS[8] || KEYS[9]));
@@ -855,9 +782,9 @@ define(function( require )
 
 		// Private messages
 		if (user.length) {
-			pkt          = new PACKET.CZ.WHISPER();
+			pkt = new PACKET.CZ.WHISPER();
 			pkt.receiver = user;
-			pkt.msg      = text;
+			pkt.msg = text;
 			Network.sendPacket(pkt);
 			return;
 		}
@@ -874,11 +801,9 @@ define(function( require )
 		// Get packet
 		if (target & ChatBox.TYPE.PARTY) {
 			pkt = new PACKET.CZ.REQUEST_CHAT_PARTY();
-		}
-		else if (target & ChatBox.TYPE.GUILD) {
+		} else if (target & ChatBox.TYPE.GUILD) {
 			pkt = new PACKET.CZ.GUILD_CHAT();
-		}
-		else {
+		} else {
 			pkt = new PACKET.CZ.REQUEST_CHAT();
 			chatLines++;
 		}
@@ -888,67 +813,61 @@ define(function( require )
 		Network.sendPacket(pkt);
 
 		//Super Novice Chant
-		if(chatLines > 7 && ([ 23, 4045, 4128, 4172, 4190, 4191, 4192, 4193]).includes(Session.Entity._job)){
-			if(Math.floor((BasicInfo.getUI().base_exp / BasicInfo.getUI().base_exp_next) * 1000.0) % 100 == 0){
-				if(text == DB.getMessage(790)){
+		if (chatLines > 7 && [23, 4045, 4128, 4172, 4190, 4191, 4192, 4193].includes(Session.Entity._job)) {
+			if (Math.floor((BasicInfo.getUI().base_exp / BasicInfo.getUI().base_exp_next) * 1000.0) % 100 == 0) {
+				if (text == DB.getMessage(790)) {
 					snCounter = 1;
-				} else if(snCounter == 1 && text == (DB.getMessage(791) + ' ' + Session.Entity.display.name + ' ' +DB.getMessage(792))){
+				} else if (snCounter == 1 && text == DB.getMessage(791) + ' ' + Session.Entity.display.name + ' ' + DB.getMessage(792)) {
 					snCounter = 2;
-				} else if(snCounter == 2 && text == DB.getMessage(793)){
+				} else if (snCounter == 2 && text == DB.getMessage(793)) {
 					snCounter = 3;
-				} else if (snCounter == 3){
+				} else if (snCounter == 3) {
 					snCounter = 0;
 					pkt = new PACKET.CZ.CHOPOKGI();
 					Network.sendPacket(pkt);
-				}else {
+				} else {
 					snCounter = 0;
 				}
 			}
 		}
 	}
 
-
 	/**
 	 * Remove cart/peco/falcon
 	 */
-	function onRemoveOption()
-	{
+	function onRemoveOption() {
 		var pkt = new PACKET.CZ.REQ_CARTOFF();
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * @var {number} walk timer
 	 */
 	var _walkTimer = null;
 
-
 	/**
 	 * @var {number} Last delay to walk
 	 */
 	var _walkLastTick = 0;
 
-
 	/**
 	 * Ask to move
 	 */
-	function onRequestWalk()
-	{
+	function onRequestWalk() {
 		Events.clearTimeout(_walkTimer);
 
 		// If siting, update direction
 		if (Session.Entity.action === Session.Entity.ACTION.SIT || KEYS.SHIFT) {
-			Session.Entity.lookTo( Mouse.world.x, Mouse.world.y );
+			Session.Entity.lookTo(Mouse.world.x, Mouse.world.y);
 
 			var pkt;
-			if(PACKETVER.value >= 20180307) {
+			if (PACKETVER.value >= 20180307) {
 				pkt = new PACKET.CZ.CHANGE_DIRECTION2();
 			} else {
 				pkt = new PACKET.CZ.CHANGE_DIRECTION();
 			}
 			pkt.headDir = Session.Entity.headDir;
-			pkt.dir     = Session.Entity.direction;
+			pkt.dir = Session.Entity.direction;
 			Network.sendPacket(pkt);
 			return;
 		}
@@ -956,37 +875,32 @@ define(function( require )
 		walkIntervalProcess();
 	}
 
-
 	/**
 	 * Stop moving
 	 */
-	function onRequestStopWalk()
-	{
+	function onRequestStopWalk() {
 		Events.clearTimeout(_walkTimer);
 	}
-
 
 	/**
 	 * Moving function
 	 */
-	function walkIntervalProcess()
-	{
+	function walkIntervalProcess() {
 		// setTimeout isn't accurate, so reduce the value
 		// to avoid possible errors.
 		if (_walkLastTick + 200 > Renderer.tick) {
 			return;
 		}
 
-		var isWalkable   = (Mouse.world.x > -1 && Mouse.world.y > -1);
-		var isCurrentPos = (Math.round(Session.Entity.position[0]) === Mouse.world.x &&
-		                    Math.round(Session.Entity.position[1]) === Mouse.world.y);
+		var isWalkable = Mouse.world.x > -1 && Mouse.world.y > -1;
+		var isCurrentPos = Math.round(Session.Entity.position[0]) === Mouse.world.x && Math.round(Session.Entity.position[1]) === Mouse.world.y;
 
 		if (isWalkable && !isCurrentPos) {
 			var pkt;
-			if(PACKETVER.value >= 20180307) {
-				pkt         = new PACKET.CZ.REQUEST_MOVE2();
+			if (PACKETVER.value >= 20180307) {
+				pkt = new PACKET.CZ.REQUEST_MOVE2();
 			} else {
-				pkt         = new PACKET.CZ.REQUEST_MOVE();
+				pkt = new PACKET.CZ.REQUEST_MOVE();
 			}
 			if (!checkFreeCell(Mouse.world.x, Mouse.world.y, 9, pkt.dest)) {
 				pkt.dest[0] = Mouse.world.x;
@@ -997,10 +911,9 @@ define(function( require )
 		}
 
 		Events.clearTimeout(_walkTimer);
-		_walkTimer    =  Events.setTimeout( walkIntervalProcess, 500);
+		_walkTimer = Events.setTimeout(walkIntervalProcess, 500);
 		_walkLastTick = +Renderer.tick;
 	}
-
 
 	/**
 	 * Search free cells around a position
@@ -1010,8 +923,7 @@ define(function( require )
 	 * @param {number} range
 	 * @param {array} out
 	 */
-	function checkFreeCell(x, y, range, out)
-	{
+	function checkFreeCell(x, y, range, out) {
 		var _x, _y, r;
 		var d_x = Session.Entity.position[0] < x ? -1 : 1;
 		var d_y = Session.Entity.position[1] < y ? -1 : 1;
@@ -1032,7 +944,6 @@ define(function( require )
 		return false;
 	}
 
-
 	/**
 	 * Does a cell is free (walkable, and no entity on)
 	 *
@@ -1040,20 +951,21 @@ define(function( require )
 	 * @param {number} y
 	 * @param {returns} is free
 	 */
-	function isFreeCell(x, y)
-	{
+	function isFreeCell(x, y) {
 		if (!(Altitude.getCellType(x, y) & Altitude.TYPE.WALKABLE)) {
 			return false;
 		}
 
 		var free = true;
 
-		EntityManager.forEach(function(entity){
-			if (entity.objecttype != entity.constructor.TYPE_EFFECT &&
+		EntityManager.forEach(function (entity) {
+			if (
+				entity.objecttype != entity.constructor.TYPE_EFFECT &&
 				entity.objecttype != entity.constructor.TYPE_UNIT &&
 				entity.objecttype != entity.constructor.TYPE_TRAP &&
 				Math.round(entity.position[0]) === x &&
-				Math.round(entity.position[1]) === y) {
+				Math.round(entity.position[1]) === y
+			) {
 				free = false;
 				return false;
 			}
@@ -1064,19 +976,17 @@ define(function( require )
 		return free;
 	}
 
-
 	/**
 	 * If the character moved to attack, once it finished to move ask to attack
 	 */
-	function onWalkEnd()
-	{
+	function onWalkEnd() {
 		// No action to do ?
 		if (Session.moveAction) {
 			// Not sure why, but there is a synchronization error with the
 			// server when moving to attack (wrong position).
 			// So wait 50ms to be sure we are at the correct position before
 			// performing an action
-			Events.setTimeout(function(){
+			Events.setTimeout(function () {
 				if (Session.moveAction) {
 					Network.sendPacket(Session.moveAction);
 					Session.moveAction = null;
@@ -1085,22 +995,19 @@ define(function( require )
 		}
 	}
 
-
 	/**
 	 * Ask server to update status
 	 *
 	 * @param {number} id
 	 * @param {number} amount
 	 */
-	function onRequestStatUpdate(id, amount)
-	{
-		var pkt          = new PACKET.CZ.STATUS_CHANGE();
-		pkt.statusID     = id;
+	function onRequestStatUpdate(id, amount) {
+		var pkt = new PACKET.CZ.STATUS_CHANGE();
+		pkt.statusID = id;
 		pkt.changeAmount = amount;
 
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * Drop item to the floor
@@ -1108,13 +1015,12 @@ define(function( require )
 	 * @param {number} index in inventory
 	 * @param {number} count to drop
 	 */
-	function onDropItem( index, count )
-	{
+	function onDropItem(index, count) {
 		if (count) {
-			if(PACKETVER.value >= 20180307) {
-				var pkt   = new PACKET.CZ.ITEM_THROW2();
+			if (PACKETVER.value >= 20180307) {
+				var pkt = new PACKET.CZ.ITEM_THROW2();
 			} else {
-				var pkt   = new PACKET.CZ.ITEM_THROW();
+				var pkt = new PACKET.CZ.ITEM_THROW();
 			}
 			pkt.Index = index;
 			pkt.count = count;
@@ -1122,32 +1028,32 @@ define(function( require )
 		}
 	}
 
-
 	/**
 	 * Use an item
 	 *
 	 * @param {number} item's index
 	 */
-	function onUseItem( index )
-	{
+	function onUseItem(index) {
 		// Items are not usable when Laphine Synthesis, Upgrade, ItemReform UI is open (if they are available at all)
-		if ((LaphineSys.__loaded && LaphineSys.__active && LaphineSys.ui.is(':visible')) ||
+		if (
+			(LaphineSys.__loaded && LaphineSys.__active && LaphineSys.ui.is(':visible')) ||
 			(LaphineUpg.__loaded && LaphineUpg.__active && LaphineUpg.ui.is(':visible')) ||
-			(ItemReform.__loaded && ItemReform.__active && ItemReform.ui.is(':visible'))) {
+			(ItemReform.__loaded && ItemReform.__active && ItemReform.ui.is(':visible'))
+		) {
 			return false;
 		}
 
 		var pkt;
-		if(PACKETVER.value >= 20180307) { // not sure - this date is when the shuffle packets stoped
+		if (PACKETVER.value >= 20180307) {
+			// not sure - this date is when the shuffle packets stoped
 			pkt = new PACKET.CZ.USE_ITEM2();
 		} else {
 			pkt = new PACKET.CZ.USE_ITEM();
 		}
 		pkt.index = index;
-		pkt.AID   = Session.Entity.GID;
+		pkt.AID = Session.Entity.GID;
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * Equip item
@@ -1155,50 +1061,42 @@ define(function( require )
 	 * @param {number} item's index
 	 * @param {number} where to equip
 	 */
-	function onEquipItem( index, location )
-	{
-		var pkt          = new PACKET.CZ.REQ_WEAR_EQUIP();
-		pkt.index        = index;
+	function onEquipItem(index, location) {
+		var pkt = new PACKET.CZ.REQ_WEAR_EQUIP();
+		pkt.index = index;
 		pkt.wearLocation = location;
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * Take off an equip
 	 *
 	 * @param {number} index to unequip
 	 */
-	function onUnEquip( index )
-	{
-		var pkt   = new PACKET.CZ.REQ_TAKEOFF_EQUIP();
+	function onUnEquip(index) {
+		var pkt = new PACKET.CZ.REQ_TAKEOFF_EQUIP();
 		pkt.index = index;
 		Network.sendPacket(pkt);
 	}
 
-
 	/**
 	 * Add Switch Equip
 	 */
-	function onAddSwitchEquip( index, location )
-	{
-		var pkt          = new PACKET.CZ.REQ_WEAR_SWITCHEQUIP_ADD();
-		pkt.index		 = index;
+	function onAddSwitchEquip(index, location) {
+		var pkt = new PACKET.CZ.REQ_WEAR_SWITCHEQUIP_ADD();
+		pkt.index = index;
 		pkt.wearLocation = location;
 		Network.sendPacket(pkt);
 	}
 
-
 	/**
 	 * Remove Switch Equip
 	 */
-	function onRemoveSwitchEquip( index )
-	{
-		var pkt          = new PACKET.CZ.REQ_WEAR_SWITCHEQUIP_REMOVE();
-		pkt.index		 = index;
+	function onRemoveSwitchEquip(index) {
+		var pkt = new PACKET.CZ.REQ_WEAR_SWITCHEQUIP_REMOVE();
+		pkt.index = index;
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * Update config
@@ -1206,23 +1104,19 @@ define(function( require )
 	 * @param {number} config id (only type:0 is supported - equip)
 	 * @param {number} val
 	 */
-	function onConfigUpdate( type, val )
-	{
-		var pkt    = new PACKET.CZ.CONFIG();
+	function onConfigUpdate(type, val) {
+		var pkt = new PACKET.CZ.CONFIG();
 		pkt.Config = type;
-		pkt.Value  = val;
+		pkt.Value = val;
 		Network.sendPacket(pkt);
 	}
-
 
 	/**
 	 * Go back from map-server to char-server
 	 */
-	function onRestart()
-	{
+	function onRestart() {
 		require('Engine/CharEngine').reload();
 	}
-
 
 	/**
 	 * Export

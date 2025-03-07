@@ -796,11 +796,6 @@ define(['./PacketStructure'], function (PACKET) {
 		//0xb99: PACKET.ZC.RODEX_RETURN_ACK
 		0xba4: PACKET.ZC.PROPERTY_HOMUN5, // ok
 
-		0xabd: PACKET.ZC.UPDATE_PARTY_MEMBER, // not implemented yet
-
-		0xa78: PACKET.ZC.CAMERA_INFO, // not implemented yet
-
-		0xae2: PACKET.ZC.UI_OPEN,
 		//CASH SHOP OPEN
 		0x0b6e: PACKET.ZC.SE_CASHSHOP_OPEN,
 		0x0a2b: PACKET.ZC.SE_CASHSHOP_OPEN2,

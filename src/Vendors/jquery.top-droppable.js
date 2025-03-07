@@ -1,10 +1,10 @@
 /*!
  * jquery.top-droppable v0.3;
  * Allows you to drop a draggable-element only into the foremost droppable-element, if more of them are overlapping.
- * 
+ *
  * contact: matthias.klan@gmail.com
- 
- 
+
+
  * The MIT License (MIT)
 
 Copyright (c) 2013 Matthias Klan
@@ -27,105 +27,103 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-(function( factory ) {
-	if ( typeof define === "function" && define.amd ) {
-
+(function (factory) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		define([ "jquery" ], factory );
+		define(['jquery'], factory);
 	} else {
-
 		// Browser globals
-		factory( jQuery );
+		factory(jQuery);
 	}
-}(function($){
-	
+})(function ($) {
 	var hoveringOverElements = new Array();
 	var topElement;
 	// var parentElement;
 	var i = 0;
-	
-	$.getCurrentHoveredElements = function(){return getCurrentHoveredElements();}; 
-	$.getTopElement = function(){return topElement};
 
+	$.getCurrentHoveredElements = function () {
+		return getCurrentHoveredElements();
+	};
+	$.getTopElement = function () {
+		return topElement;
+	};
 
-	$.fn.extend({ 
-		
-		topDroppable: function(settings) {
- 			
- 			var defaults = {
- 
-				drop: function() {},
-				dragstart: function() {},
-				dragstop: function() {},
-		 
-		    };
-		    var settings = $.extend(defaults, settings);
-		
-			
-			return this.each(function() {
-				$(this).hideShow(function(e, visibility){
+	$.fn.extend({
+		topDroppable: function (settings) {
+			var defaults = {
+				drop: function () {},
+				dragstart: function () {},
+				dragstop: function () {},
+			};
+			var settings = $.extend(defaults, settings);
+
+			return this.each(function () {
+				$(this).hideShow(function (e, visibility) {
 					// console.log(this);
 					// console.log("Element is "+visibility);
 				});
 
-				$(this).on('dragstart', function(event, ui){
+				$(this).on('dragstart', function (event, ui) {
 					// parentElement = $(this);
-					settings.dragstart.call(this, event, ui );
+					settings.dragstart.call(this, event, ui);
 				});
-				$(this).on('dragstop', function(event, ui){
-					settings.dragstop.call(this, event, ui );
+				$(this).on('dragstop', function (event, ui) {
+					settings.dragstop.call(this, event, ui);
 				});
-    			$(this).on( "dropover", function( event, ui ) {
-    				if($(this).css("z-index") == 'auto'){
-    					console.log("ERROR: please add a specific z-index to your topDroppable Elements!");
-    					return;
-    				}
-    			    hoveringOverElements.push(i);
-    			    $(this).attr('top-droppable-id', i);
-    			    i++;
-			        topElement = determineTopElement(); 
-			    });
-			    $(this).on( "dropout", function( event, ui ) {
-			    	var position = hoveringOverElements.indexOf(parseInt($(this).attr('top-droppable-id')));
-			 		hoveringOverElements.splice(position, 1);
-		     		topElement = determineTopElement();	
-			    });
-				$(this).on( "drop", function( event, ui ) {
-			 		hoveringOverElements = new Array();
-					if($(this).attr('top-droppable-id') == $(topElement).attr('top-droppable-id')){
+				$(this).on('dropover', function (event, ui) {
+					if ($(this).css('z-index') == 'auto') {
+						console.log('ERROR: please add a specific z-index to your topDroppable Elements!');
+						return;
+					}
+					hoveringOverElements.push(i);
+					$(this).attr('top-droppable-id', i);
+					i++;
+					topElement = determineTopElement();
+				});
+				$(this).on('dropout', function (event, ui) {
+					var position = hoveringOverElements.indexOf(parseInt($(this).attr('top-droppable-id')));
+					hoveringOverElements.splice(position, 1);
+					topElement = determineTopElement();
+				});
+				$(this).on('drop', function (event, ui) {
+					hoveringOverElements = new Array();
+					if ($(this).attr('top-droppable-id') == $(topElement).attr('top-droppable-id')) {
 						i = 0;
 						topElement = null;
-						settings.drop.call(this, event, ui );
+						settings.drop.call(this, event, ui);
 					}
 				});
 			});
-		}
-	});	
-	
-	function determineTopElement(){
-	    var tmp_winner;
-	    var tmp_highest = 0;
-	
-	    for (var i in hoveringOverElements){
-	     	  var element = $( "*[top-droppable-id="+hoveringOverElements[i]+"]");
-	     	  var z_index = $(element).css("z-index");
-	          if( z_index > tmp_highest){
-	               tmp_highest = z_index;
-	               tmp_winner = element;
-	          }
-	    }
-	    return tmp_winner;
-	   
-	}	
+		},
+	});
 
-	function getCurrentHoveredElements(){
+	function determineTopElement() {
+		var tmp_winner;
+		var tmp_highest = 0;
+
+		for (var i in hoveringOverElements) {
+			var element = $('*[top-droppable-id=' + hoveringOverElements[i] + ']');
+			var z_index = $(element).css('z-index');
+			var isVisible = $(element).css('display') !== 'none' && $(element).css('visibility') !== 'hidden';
+
+			if (isVisible && z_index > tmp_highest) {
+				tmp_highest = z_index;
+				tmp_winner = element;
+			}
+		}
+		return tmp_winner;
+	}
+
+	function getCurrentHoveredElements() {
 		var elements = new Array();
 
-		for (var i in hoveringOverElements){
-			var element = $( "*[top-droppable-id="+hoveringOverElements[i]+"]");
-			elements.push(element);
-	 	}
-	 	return elements; 
+		for (var i in hoveringOverElements) {
+			var element = $('*[top-droppable-id=' + hoveringOverElements[i] + ']');
+			const isVisible = $(element).css('display') !== 'none';
+			if (isVisible) {
+				elements.push(element);
+			}
+		}
+		return elements;
 	}
-		
-}));
+});
